@@ -19,7 +19,6 @@ from enlaceTx import TX
 
 
 class enlace(object):
-
     def __init__(self, name):
         self.fisica = fisica(name)
         self.rx = RX(self.fisica)
@@ -42,4 +41,4 @@ class enlace(object):
 
     def getData(self, size):
         data = self.rx.getNData(size)
-        return(data, len(data))
+        return (data, len(data))

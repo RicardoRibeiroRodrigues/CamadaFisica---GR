@@ -17,7 +17,6 @@ import threading
 
 
 class RX(object):
-
     def __init__(self, fisica):
         self.fisica = fisica
         self.buffer = bytes(bytearray())
@@ -27,9 +26,9 @@ class RX(object):
 
     def thread(self):
         while not self.threadStop:
-            if(self.threadMutex == True):
+            if self.threadMutex:
                 rxTemp, nRx = self.fisica.read(self.READLEN)
-                if (nRx > 0):
+                if nRx > 0:
                     self.buffer += rxTemp
                 time.sleep(0.01)
 
@@ -47,32 +46,32 @@ class RX(object):
         self.threadMutex = True
 
     def getIsEmpty(self):
-        if(self.getBufferLen() == 0):
-            return(True)
+        if self.getBufferLen() == 0:
+            return True
         else:
-            return(False)
+            return False
 
     def getBufferLen(self):
-        return(len(self.buffer))
+        return len(self.buffer)
 
     def getAllBuffer(self, len):
         self.threadPause()
         b = self.buffer[:]
         self.clearBuffer()
         self.threadResume()
-        return(b)
+        return b
 
     def getBuffer(self, nData):
         self.threadPause()
         b = self.buffer[0:nData]
         self.buffer = self.buffer[nData:]
         self.threadResume()
-        return(b)
+        return b
 
     def getNData(self, size):
-        while(self.getBufferLen() < size):
+        while self.getBufferLen() < size:
             time.sleep(0.05)
-        return(self.getBuffer(size))
+        return self.getBuffer(size)
 
     def clearBuffer(self):
         self.buffer = b""

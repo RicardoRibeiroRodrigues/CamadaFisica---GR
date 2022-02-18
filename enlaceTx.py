@@ -17,7 +17,6 @@ import threading
 
 
 class TX(object):
-
     def __init__(self, fisica):
         self.fisica = fisica
         self.buffer = bytes(bytearray())
@@ -28,7 +27,7 @@ class TX(object):
 
     def thread(self):
         while not self.threadStop:
-            if(self.threadMutex):
+            if self.threadMutex:
                 self.transLen = self.fisica.write(self.buffer)
                 self.threadMutex = False
 
@@ -51,10 +50,10 @@ class TX(object):
         self.threadMutex = True
 
     def getBufferLen(self):
-        return(len(self.buffer))
+        return len(self.buffer)
 
     def getStatus(self):
-        return(self.transLen)
+        return self.transLen
 
     def getIsBussy(self):
-        return(self.threadMutex)
+        return self.threadMutex
