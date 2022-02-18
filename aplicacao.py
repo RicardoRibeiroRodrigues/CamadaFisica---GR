@@ -22,16 +22,16 @@ import numpy as np
 # use uma das 3 opcoes para atribuir à variável a porta usada
 # serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM6"                  # Windows(variacao de)
+serialName = "COM3"  # Windows(variacao de)
 
 
 def main():
     try:
         # declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
         # para declarar esse objeto é o nome da porta.
-        com1 = enlace('COM6')
+        com1 = enlace("COM3")
 
-        # Ativa comunicacao. Inicia os threads e a comunicação seiral
+        # Ativa comunicacao. Inicia os threads e a comunicação serial
         com1.enable()
         # Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
 
@@ -48,7 +48,11 @@ def main():
         # tente entender como o método send funciona!
         # Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
 
-        txBuffer =  # dados
+        with open("img/icon.png", "rb") as img:
+            txBuffer = img.read()
+
+        print(f"Tamanho da img em bytes: {len(txBuffer)}")
+        comeco = time.time()
         com1.sendData(np.asarray(txBuffer))
 
         # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
@@ -64,9 +68,15 @@ def main():
         # acesso aos bytes recebidos
         txLen = len(txBuffer)
         rxBuffer, nRx = com1.getData(txLen)
-        print("recebeu {}" .format(rxBuffer))
+        final = time.time()
+        print("recebeu {}".format(rxBuffer))
+
+        # Escreve a copia recebida na pasta img
+        with open("img/icon_copia.png", "wb") as img_recebida:
+            img_recebida.write(rxBuffer)
 
         # Encerra comunicação
+        print(f"Tempo de transmissão: {(final - comeco):.4f} s")
         print("-------------------------")
         print("Comunicação encerrada")
         print("-------------------------")
@@ -78,5 +88,7 @@ def main():
         com1.disable()
 
     # so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
+
+
 if __name__ == "__main__":
     main()
