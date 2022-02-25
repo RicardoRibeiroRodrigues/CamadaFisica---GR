@@ -56,13 +56,16 @@ def main():
         while True:
             rxBuffer, nRx = com1.getData(1)
             rxSize = int.from_bytes(rxBuffer, "big")
-            print(rxBuffer)
-            # com1.sendData(np.asanyarray(b"\x10"))
+            time.sleep(0.01)
+            com1.sendData(np.asanyarray(b"\x10"))
             if rxBuffer == b"\x11":
-                print(contador)
+                com1.sendData(np.asarray(contador.to_bytes(1, "big")))
+                print(f"O total recebido pelo servidor foi: {contador}")
                 break
+            print(f"O comando({contador + 1}) enviado: {rxBuffer}")
             rxBuffer, nRx = com1.getData(rxSize)
-            # com1.sendData(np.asanyarray(b"\x10"))
+            com1.sendData(np.asanyarray(b"\x10"))
+            time.sleep(0.01)
             contador += 1
             print(rxBuffer)
 
