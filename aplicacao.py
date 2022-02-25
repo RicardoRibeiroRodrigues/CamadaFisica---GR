@@ -13,6 +13,7 @@
 from enlace import *
 import time
 import numpy as np
+from random import randint
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -39,7 +40,28 @@ def main():
         # seus dados a serem transmitidos são uma lista de bytes a serem transmitidos. Gere esta lista com o
         # nome de txBuffer. Esla sempre irá armazenar os dados a serem enviados.
 
-        # txBuffer = imagem em bytes!
+        # Cria a lista de comandos a ser enviado (Client side)
+        COMANDO_1 = b"\x00\xFF\x00\xFF"
+        COMANDO_2 = b"\x00\xFF\xFF\x00"
+        COMANDO_3 = b"\xFF"
+        COMANDO_4 = b"\x00"
+        COMANDO_5 = b"\xFF\x00"
+        COMANDO_6 = b"\x00\xFF"
+
+        LISTA_TODOS_COMANDOS = [
+            COMANDO_1,
+            COMANDO_2,
+            COMANDO_3,
+            COMANDO_4,
+            COMANDO_5,
+            COMANDO_6,
+        ]
+
+        n_comandos = randint(10, 30)
+
+        lista_comandos = [
+            LISTA_TODOS_COMANDOS[randint(0, 5)] for _ in range(n_comandos)
+        ]
 
         # faça aqui uma conferência do tamanho do seu txBuffer, ou seja, quantos bytes serão enviados.
 
@@ -47,14 +69,47 @@ def main():
         # faça um print para avisar que a transmissão vai começar.
         # tente entender como o método send funciona!
         # Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
+        i = 1
+        COMANDO_OK = b"\x10"
+        for comando in lista_comandos:
+            # Primeiro manda uma mensagem avisando o tamanho do comando
+            com1.sendData(np.asarray(len(comando).to_bytes(1, byteorder="big")))
 
-        with open("img/icon.png", "rb") as img:
-            txBuffer = img.read()
+            time.sleep(0.01)
 
-        print(f"Tamanho da img em bytes: {len(txBuffer)}")
-        comeco = time.time()
-        com1.sendData(np.asarray(txBuffer))
+            rxBuffer, _ = com1.getData(1)
+            print("Servidor recebeu!")
+            if rxBuffer != COMANDO_OK:
+                break
 
+            # Em seguida, o comando em si
+            print(f"COMANDO({i}) ENVIADO: {comando}")
+            com1.sendData(np.asarray(comando))
+
+            time.sleep(0.01)
+
+            rxBuffer, _ = com1.getData(1)
+            print("Servidor recebeu!")
+            if rxBuffer != COMANDO_OK:
+                break
+
+            i += 1
+            # rxBuffer, nRx = com1.getData(len(comando))
+
+            # print(f"Enviado: {comando}, Recebido {rxBuffer}")
+
+        # Manda uma mensagem para avisar o servidor que acabou a transmissao
+        COMANDO_FIM = b"\x11"
+        com1.sendData(np.asarray(COMANDO_FIM))
+
+        # Recebe a resposta do numero de comandos pelo servidor
+        rxBuffer, _ = com1.getData(1)
+        n_comandos = int.from_bytes(rxBuffer, "big")
+        print(
+            f"O servidor recebeu {n_comandos}, foi a quantidade certa? {'Sim' if n_comandos == len(lista_comandos) else 'Não'}"
+        )
+
+        print("Terminou a transmissao")
         # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
         # Tente entender como esse método funciona e o que ele retorna
         txSize = com1.tx.getStatus()
@@ -66,18 +121,10 @@ def main():
         # Veja o que faz a funcao do enlaceRX  getBufferLen
 
         # acesso aos bytes recebidos
-        txLen = len(txBuffer)
-        rxBuffer, nRx = com1.getData(txLen)
-        final = time.time()
-        print("recebeu {}".format(rxBuffer))
-
-        # Escreve a copia recebida na pasta img
-        with open("img/icon_copia.png", "wb") as img_recebida:
-            img_recebida.write(rxBuffer)
 
         # Encerra comunicação
-        print(f"Tempo de transmissão: {(final - comeco):.4f} s")
         print("-------------------------")
+        print(f"Tamanho da mensagem: {len(lista_comandos)}")
         print("Comunicação encerrada")
         print("-------------------------")
         com1.disable()
