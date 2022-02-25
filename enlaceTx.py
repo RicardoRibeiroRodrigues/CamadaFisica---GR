@@ -14,6 +14,7 @@ import time
 import threading
 
 # Class
+b'\x10'
 
 
 class TX(object):

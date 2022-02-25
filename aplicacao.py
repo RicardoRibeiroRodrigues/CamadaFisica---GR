@@ -20,16 +20,16 @@ import numpy as np
 # se estiver usando windows, o gerenciador de dispositivos informa a porta
 
 # use uma das 3 opcoes para atribuir à variável a porta usada
-# serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
+serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM6"                  # Windows(variacao de)
+# serialName = "COM6"                  # Windows(variacao de)
 
 
 def main():
     try:
         # declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
         # para declarar esse objeto é o nome da porta.
-        com1 = enlace('COM6')
+        com1 = enlace('/dev/ttyACM0')
 
         # Ativa comunicacao. Inicia os threads e a comunicação seiral
         com1.enable()
@@ -48,8 +48,23 @@ def main():
         # tente entender como o método send funciona!
         # Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
 
-        txBuffer =  # dados
-        com1.sendData(np.asarray(txBuffer))
+        # com1.sendData(np.asarray(txBuffer))
+        
+        # loop para receber
+        contador = 0
+
+        while True:
+            rxBuffer, nRx = com1.getData(1)
+            rxSize = int.from_bytes(rxBuffer, "big")
+            print(rxBuffer)
+            # com1.sendData(np.asanyarray(b"\x10"))
+            if rxBuffer == b"\x11":
+                print(contador)
+                break
+            rxBuffer, nRx = com1.getData(rxSize)
+            # com1.sendData(np.asanyarray(b"\x10"))
+            contador += 1
+            print(rxBuffer)
 
         # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
         # Tente entender como esse método funciona e o que ele retorna
@@ -60,11 +75,6 @@ def main():
 
         # Será que todos os bytes enviados estão realmente guardadas? Será que conseguimos verificar?
         # Veja o que faz a funcao do enlaceRX  getBufferLen
-
-        # acesso aos bytes recebidos
-        txLen = len(txBuffer)
-        rxBuffer, nRx = com1.getData(txLen)
-        print("recebeu {}" .format(rxBuffer))
 
         # Encerra comunicação
         print("-------------------------")
