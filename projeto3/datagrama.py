@@ -16,4 +16,4 @@ def monta_header(
         etc(byte): (?)
     """
     header = f"{tipo_pacote}{versao}{n_pacote}{tamanho_payload}{destino}{origem}{n_pacotes}{etc}"
-    return bytes(header)
+    return tipo_pacote + versao + n_pacote + tamanho_payload + destino+origem + n_pacotes + etc
