@@ -69,8 +69,11 @@ class RX(object):
         return b
 
     def getNData(self, size):
+        comeco = time.time()
         while self.getBufferLen() < size:
             time.sleep(0.05)
+            if time.time() - comeco > 10:
+                raise RuntimeError("O servidor demorou muito para enviar a resposta!")
         return self.getBuffer(size)
 
     def clearBuffer(self):

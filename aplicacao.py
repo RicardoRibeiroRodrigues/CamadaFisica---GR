@@ -70,6 +70,7 @@ def main():
         # tente entender como o método send funciona!
         # Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
         i = 1
+
         COMANDO_OK = b"\x10"
         for comando in lista_comandos:
             # Primeiro manda uma mensagem avisando o tamanho do comando
@@ -102,7 +103,7 @@ def main():
         COMANDO_FIM = b"\x11"
         com1.sendData(np.asarray(COMANDO_FIM))
 
-        # Recebe a resposta do numero de comandos pelo servidor
+        # Recebe a resposta do numero de comandos pelo servido
         rxBuffer, _ = com1.getData(1)
         n_comandos = int.from_bytes(rxBuffer, "big")
         print(
