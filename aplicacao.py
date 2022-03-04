@@ -59,13 +59,14 @@ def main():
             time.sleep(0.01)
             com1.sendData(np.asanyarray(b"\x10"))
             if rxBuffer == b"\x11":
+                contador -= 1
                 com1.sendData(np.asarray(contador.to_bytes(1, "big")))
                 print(f"O total recebido pelo servidor foi: {contador}")
                 break
             print(f"O comando({contador + 1}) enviado: {rxBuffer}")
             rxBuffer, nRx = com1.getData(rxSize)
             com1.sendData(np.asanyarray(b"\x10"))
-            time.sleep(0.01)
+            # time.sleep(15)
             contador += 1
             print(rxBuffer)
 
