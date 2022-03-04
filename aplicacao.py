@@ -14,6 +14,7 @@ from enlace import *
 import time
 import numpy as np
 from random import randint
+from datagrama import monta_header, monta_pacote
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -24,6 +25,41 @@ from random import randint
 # serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 serialName = "COM3"  # Windows(variacao de)
+
+DADOS = b"\x01"
+COMANDOS = b"\x02"
+IPV4 = b"\x01"
+IPV6 = b"\x02"
+PC_RICARDO = b"\x01"
+PC_FONTANA = b"\x02"
+EOP = b"\xFF\xFF\xFF\xFF"
+
+
+def handshake(com1):
+    mensagem = bytes("vivo?", "utf-8")
+
+    header = monta_header(
+        DADOS,
+        IPV6,
+        b"\x01",
+        int.to_bytes(len(mensagem), "big"),
+        PC_FONTANA,
+        PC_RICARDO,
+        b"\x01",
+        b"\x00\x00\x00",
+    )
+    while True:
+        try:
+            com1.sendData(np.asarray(header))
+            com1.sendData(np.asarray(mensagem))
+            com1.sendData(np.asarray(EOP))
+            rxBuffer, _ = com1.getData(10)
+
+            break
+        except TimeoutError:
+            resposta = input("Servidor inativo. Tentar novamente? S/N")
+            if resposta == "N":
+                break
 
 
 def main():
@@ -40,28 +76,7 @@ def main():
         # seus dados a serem transmitidos são uma lista de bytes a serem transmitidos. Gere esta lista com o
         # nome de txBuffer. Esla sempre irá armazenar os dados a serem enviados.
 
-        # Cria a lista de comandos a ser enviado (Client side)
-        COMANDO_1 = b"\x00\xFF\x00\xFF"
-        COMANDO_2 = b"\x00\xFF\xFF\x00"
-        COMANDO_3 = b"\xFF"
-        COMANDO_4 = b"\x00"
-        COMANDO_5 = b"\xFF\x00"
-        COMANDO_6 = b"\x00\xFF"
-
-        LISTA_TODOS_COMANDOS = [
-            COMANDO_1,
-            COMANDO_2,
-            COMANDO_3,
-            COMANDO_4,
-            COMANDO_5,
-            COMANDO_6,
-        ]
-
-        n_comandos = randint(10, 30)
-
-        lista_comandos = [
-            LISTA_TODOS_COMANDOS[randint(0, 5)] for _ in range(n_comandos)
-        ]
+        handshake(com1)
 
         # faça aqui uma conferência do tamanho do seu txBuffer, ou seja, quantos bytes serão enviados.
 
@@ -69,46 +84,8 @@ def main():
         # faça um print para avisar que a transmissão vai começar.
         # tente entender como o método send funciona!
         # Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
-        i = 1
-
-        COMANDO_OK = b"\x10"
-        for comando in lista_comandos:
-            # Primeiro manda uma mensagem avisando o tamanho do comando
-            com1.sendData(np.asarray(len(comando).to_bytes(1, byteorder="big")))
-
-            time.sleep(0.01)
-
-            rxBuffer, _ = com1.getData(1)
-            print("Servidor recebeu!")
-            if rxBuffer != COMANDO_OK:
-                break
-
-            # Em seguida, o comando em si
-            print(f"COMANDO({i}) ENVIADO: {comando}")
-            com1.sendData(np.asarray(comando))
-
-            time.sleep(0.01)
-
-            rxBuffer, _ = com1.getData(1)
-            print("Servidor recebeu!")
-            if rxBuffer != COMANDO_OK:
-                break
-
-            i += 1
-            # rxBuffer, nRx = com1.getData(len(comando))
-
-            # print(f"Enviado: {comando}, Recebido {rxBuffer}")
 
         # Manda uma mensagem para avisar o servidor que acabou a transmissao
-        COMANDO_FIM = b"\x11"
-        com1.sendData(np.asarray(COMANDO_FIM))
-
-        # Recebe a resposta do numero de comandos pelo servido
-        rxBuffer, _ = com1.getData(1)
-        n_comandos = int.from_bytes(rxBuffer, "big")
-        print(
-            f"O servidor recebeu {n_comandos}, foi a quantidade certa? {'Sim' if n_comandos == len(lista_comandos) else 'Não'}"
-        )
 
         print("Terminou a transmissao")
         # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
@@ -125,7 +102,6 @@ def main():
 
         # Encerra comunicação
         print("-------------------------")
-        print(f"Tamanho da mensagem: {len(lista_comandos)}")
         print("Comunicação encerrada")
         print("-------------------------")
         com1.disable()
