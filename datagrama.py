@@ -15,5 +15,13 @@ def monta_header(
         n_pacotes(bytes): numero de pacotes da mensagem inteira.
         etc(byte): (?)
     """
-    header = f"{tipo_pacote}{versao}{n_pacote}{tamanho_payload}{destino}{origem}{n_pacotes}{etc}"
-    return bytes(header)
+    return (
+        tipo_pacote
+        + versao
+        + n_pacote
+        + tamanho_payload
+        + destino
+        + origem
+        + n_pacotes
+        + etc
+    )
