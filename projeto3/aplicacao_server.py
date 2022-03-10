@@ -14,6 +14,7 @@ from enlace import *
 import time
 import numpy as np
 from datagrama import monta_header
+from utils import bytes_to_list
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -25,9 +26,9 @@ serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 # serialName = "COM6"                  # Windows(variacao de)
 
-HANDSHAKE = b"\x00"
+HANDSHAKE = 0
 RESPOSTA_HANDSHAKE = b"\x01"
-DADOS = b"\x02"
+DADOS = 2
 COMANDOS = b"\x03"
 CONFIRMACAO = b"\x04"
 ERRO = b"\x05"
@@ -37,13 +38,14 @@ PC_RICARDO = b"\x01"
 PC_FONTANA = b"\x02"
 EOP = b"\xFF\xFF\xFF\xFF"
 
+
 def resposta(com1, head, resposta):
 
     header = monta_header(
         resposta,
         IPV6,
         b"\x01",
-        len(mensagem).to_bytes(1, "big"),
+        b"\x01",
         PC_RICARDO,
         PC_FONTANA,
         b"\x01",
@@ -51,7 +53,7 @@ def resposta(com1, head, resposta):
     )
     com1.sendData(np.asarray(header))
     time.sleep(0.01)
-    com1.sendData(np.asarray(mensagem))
+    com1.sendData(np.asarray(b"\x00"))
     time.sleep(0.01)
     com1.sendData(np.asarray(EOP))
     time.sleep(0.01)
@@ -67,16 +69,41 @@ def main():
         com1.enable()
 
         while True:
+            content = b""
             rxBufferHeader, nRx = com1.getData(10)
             print("Recebi head!")
+            print(rxBufferHeader)
+            print(rxBufferHeader[0])
             if rxBufferHeader[0] == HANDSHAKE:
+                size = rxBufferHeader[3]
+                info, _ = com1.getData(size)
+                final, _ = com1.getData(4)
                 resposta(com1, rxBufferHeader, RESPOSTA_HANDSHAKE)
             if rxBufferHeader[0] == DADOS:
-                resposta(com1, rxBufferHeader, CONFIRMACAO)
-            final, _ = com1.getData(4)
-            if final == EOP:
-                print("receba!")
+                message_size = rxBufferHeader[6]
+                i = 0
+                while i < message_size:
+                    if i != 0:
+                        rxBufferHeader, nRx = com1.getData(10)
+                    size = rxBufferHeader[3]
+                    print(size)
+                    info, _ = com1.getData(size)
+                    time.sleep(0.05)
+                    final, _ = com1.getData(4)
+                    print("info: {}" .format(info))
+                    content += info
+                    print(final)
+                    if final == bytes_to_list(EOP):
+                        print("No if")
+                        i += 1
+                        resposta(com1, rxBufferHeader, CONFIRMACAO)
+                        print("uma resposta recebida")
+                with open("img/icon.png", "wb") as img:
+                    img.write(content)
+                print("Receba!!!! Graças a deus, SIUUUUU!!!")
                 break
+                        
+
 
         # Encerra comunicação
         print("-------------------------")
