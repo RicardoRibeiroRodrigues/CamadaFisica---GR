@@ -99,11 +99,13 @@ def main():
                             print("uma resposta recebida")
                         else:
                             print("deu errado, to no else")
+                            if com1.rx.getBufferLen() > 0:
+                                print("Tamanho informado errado")
                             com1.rx.clearBuffer()
                             resposta(com1, rxBufferHeader, ERRO, i)
                     except TimeoutError:
                         print("Deu ruim fdp")
-                        resposta(com1, rxBufferHeader, ERRO, i)                       
+                        resposta(com1, rxBufferHeader, ERRO, i)
                 with open("img/icon.png", "wb") as img:
                     img.write(content)
                 print("Receba!!!! Graças a deus, SIUUUUU!!!")
