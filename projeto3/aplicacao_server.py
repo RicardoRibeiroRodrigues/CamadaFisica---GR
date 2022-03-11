@@ -39,12 +39,13 @@ PC_FONTANA = b"\x02"
 EOP = b"\xFF\xFF\xFF\xFF"
 
 
-def resposta(com1, head, resposta):
+def resposta(com1, head, resposta, n_pacote=0):
 
+    n_pacote = n_pacote.to_bytes(1, byteorder='big')
     header = monta_header(
         resposta,
         IPV6,
-        b"\x01",
+        n_pacote,
         b"\x01",
         PC_RICARDO,
         PC_FONTANA,
@@ -71,9 +72,6 @@ def main():
         while True:
             content = b""
             rxBufferHeader, nRx = com1.getData(10)
-            print("Recebi head!")
-            print(rxBufferHeader)
-            print(rxBufferHeader[0])
             if rxBufferHeader[0] == HANDSHAKE:
                 size = rxBufferHeader[3]
                 info, _ = com1.getData(size)
@@ -83,21 +81,28 @@ def main():
                 message_size = rxBufferHeader[6]
                 i = 0
                 while i < message_size:
-                    if i != 0:
-                        rxBufferHeader, nRx = com1.getData(10)
-                    size = rxBufferHeader[3]
-                    print(size)
-                    info, _ = com1.getData(size)
-                    time.sleep(0.05)
-                    final, _ = com1.getData(4)
-                    print("info: {}" .format(info))
-                    content += info
-                    print(final)
-                    if final == bytes_to_list(EOP):
-                        print("No if")
-                        i += 1
-                        resposta(com1, rxBufferHeader, CONFIRMACAO)
-                        print("uma resposta recebida")
+                    try:
+                        if i != 0:
+                            rxBufferHeader, nRx = com1.getData(10)
+                        size = rxBufferHeader[3]
+                        info, _ = com1.getData(size)
+                        time.sleep(0.05)
+                        final, _ = com1.getData(4)
+                        pacote_certo = rxBufferHeader[2] == i
+                        print("info: {}" .format(info))
+                        print("i: {}".format(i))
+                        if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
+                            content += info
+                            i += 1
+                            resposta(com1, rxBufferHeader, CONFIRMACAO)
+                            print("uma resposta recebida")
+                        else:
+                            print("deu errado, to no else")
+                            com1.rx.clearBuffer()
+                            resposta(com1, rxBufferHeader, ERRO, i)
+                    except TimeoutError:
+                        print("Deu ruim fdp")
+                        resposta(com1, rxBufferHeader, ERRO, i)                       
                 with open("img/icon.png", "wb") as img:
                     img.write(content)
                 print("Receba!!!! Graças a deus, SIUUUUU!!!")

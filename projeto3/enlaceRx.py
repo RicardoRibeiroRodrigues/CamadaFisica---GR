@@ -71,9 +71,10 @@ class RX(object):
     def getNData(self, size):
         comeco = time.time()
         while self.getBufferLen() < size:
-            print("bytes disponiveis{}" .format(self.getBufferLen()))
-            print("esperando{}" .format(size))
-            time.sleep(0.5)
+            time.sleep(0.05)
+            if time.time() - comeco > 5:
+                self.clearBuffer()
+                raise TimeoutError("Deu ruim caraio")
         return self.getBuffer(size)
 
     def clearBuffer(self):
