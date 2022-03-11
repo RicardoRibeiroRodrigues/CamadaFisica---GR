@@ -10,12 +10,12 @@
 # para acompanhar a execução e identificar erros, construa prints ao longo do código!
 
 
-from email import header
+from sys import byteorder
 from enlace import *
 import time
 import numpy as np
-from random import randint
 from datagrama import monta_header
+from utils import bytes_to_list, para_inteiro
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -41,6 +41,7 @@ IPV6 = b"\x02"
 PC_RICARDO = b"\x01"
 PC_FONTANA = b"\x02"
 EOP = b"\xFF\xFF\xFF\xFF"
+content = b""
 
 
 def fragmenta(mensagem):
@@ -80,16 +81,17 @@ def handshake(com1):
             print("Recebeu o HEAD do server")
             payload = rxBuffer[3]
             resposta = rxBuffer[0]
-            if resposta == RESPOSTA_HANDSHAKE:
+            if resposta == 1:
                 print("O servidor respondeu")
             # Pega a msg de resposta do servidor (payload)
             rxBuffer, _ = com1.getData(payload)
             rxBuffer, _ = com1.getData(4)
-            if rxBuffer == EOP:
+            print(bytes_to_list(rxBuffer))
+            if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
                 print("Handshake deu certo!")
                 return True
             print("Algo deu errado, refazendo o handshake")
-        except RuntimeError:
+        except TimeoutError:
             resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
             if resposta == "N":
                 return False
@@ -97,12 +99,14 @@ def handshake(com1):
 
 def envia_mensagem(lista_payloads, com1):
     i = 0
+    print(lista_payloads)
+    n_pacotes = len(lista_payloads).to_bytes(1, "big")
     while i < len(lista_payloads):
         # Define parametros de header
-        n_pacote = i.to_bytes(1, "big")
+        n_pacote = i.to_bytes(1, byteorder="big")
         payload = lista_payloads[i]
-        tamanho_pacote = len(payload).to_bytes(1, "big")
-        n_pacotes = len(lista_payloads).to_bytes(1, "big")
+        # content += payload
+        tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
         # Monta o header com os parametros
         header = monta_header(
             DADOS,
@@ -114,19 +118,26 @@ def envia_mensagem(lista_payloads, com1):
             n_pacotes,
             b"\x00\x00\x00",
         )
+        print(f"{i = }")
         # Manda o pacote para o servidor
-        com1.sendData(np.asarray(header))
+        pacote = header + payload + EOP
+        com1.sendData(np.asarray(pacote))
         time.sleep(0.01)
-        com1.sendData(np.asarray(payload))
-        time.sleep(0.01)
-        com1.sendData(np.asarray(EOP))
+        print("Enviou a mensagem")
         # Confirma que o servidor recebeu corretamente
         header_server, _ = com1.getData(10)
+        print("Recebe o HEAD")
         _, _ = com1.getData(header_server[3])
         final_server, _ = com1.getData(4)
-        if header_server[0] == CONFIRMACAO and final_server == EOP:
+        confirma = header_server[0] == para_inteiro(CONFIRMACAO)
+        final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
+        if confirma and final_pacote:
             print("O servidor recebeu o payload corretamente, mandando o prox")
             i += 1
+        else:
+            i = header_server[2]
+            com1.rx.clearBuffer()
+            print("Algo deu errado, tentando novamente")
 
 
 def main():
@@ -141,9 +152,11 @@ def main():
         res = handshake(com1)
 
         if res:
-            pass
+            with open("img/icon.png", "rb") as file:
+                envia_mensagem(fragmenta(file.read()), com1)
 
         # Encerra comunicação
+        print(content)
         print("-------------------------")
         print("Comunicação encerrada")
         print("-------------------------")
@@ -163,3 +176,4 @@ if __name__ == "__main__":
     #     coisa = img.read()
     #     print(len(coisa))
     #     print(len(fragmenta(coisa)))
+    #     envia_mensagem(fragmenta(coisa), com1)

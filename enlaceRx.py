@@ -72,8 +72,8 @@ class RX(object):
         comeco = time.time()
         while self.getBufferLen() < size:
             time.sleep(0.05)
-            if time.time() - comeco > 5:
-                raise RuntimeError("O servidor demorou muito para enviar a resposta!")
+            if time.time() - comeco > 10:
+                raise TimeoutError("O servidor demorou muito para enviar a resposta!")
         return self.getBuffer(size)
 
     def clearBuffer(self):
