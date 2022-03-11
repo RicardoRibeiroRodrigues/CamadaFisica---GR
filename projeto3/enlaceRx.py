@@ -74,7 +74,7 @@ class RX(object):
             time.sleep(0.05)
             if time.time() - comeco > 5:
                 self.clearBuffer()
-                raise TimeoutError("Deu ruim caraio")
+                raise TimeoutError("Tempo excedido")
         return self.getBuffer(size)
 
     def clearBuffer(self):

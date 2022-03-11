@@ -52,12 +52,13 @@ def resposta(com1, head, resposta, n_pacote=0):
         b"\x01",
         b"\x00\x00\x00",
     )
-    com1.sendData(np.asarray(header))
+    pacote = (header+b"\x00"+EOP)
+    com1.sendData(np.asarray(pacote))
     time.sleep(0.01)
-    com1.sendData(np.asarray(b"\x00"))
+"""     com1.sendData(np.asarray(b"\x00"))
     time.sleep(0.01)
     com1.sendData(np.asarray(EOP))
-    time.sleep(0.01)
+    time.sleep(0.01) """
 
 
 def main():
