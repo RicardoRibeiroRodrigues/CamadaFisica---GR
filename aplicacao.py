@@ -41,7 +41,6 @@ IPV6 = b"\x02"
 PC_RICARDO = b"\x01"
 PC_FONTANA = b"\x02"
 EOP = b"\xFF\xFF\xFF\xFF"
-content = b""
 
 
 def fragmenta(mensagem):
@@ -107,6 +106,8 @@ def envia_mensagem(lista_payloads, com1):
         payload = lista_payloads[i]
         # content += payload
         tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
+        # Tamanho bugado
+        # tamanho_pacote = (10).to_bytes(1, byteorder="big")
         # Monta o header com os parametros
         header = monta_header(
             DADOS,
@@ -156,7 +157,6 @@ def main():
                 envia_mensagem(fragmenta(file.read()), com1)
 
         # Encerra comunicação
-        print(content)
         print("-------------------------")
         print("Comunicação encerrada")
         print("-------------------------")
