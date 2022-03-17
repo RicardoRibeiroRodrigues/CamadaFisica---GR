@@ -90,6 +90,8 @@ def main():
                         time.sleep(0.05)
                         final, _ = com1.getData(4)
                         pacote_certo = rxBufferHeader[2] == i
+                        if not pacote_certo:
+                            print("O número do pacote está incorreto, reenviando número do pacote correto!")
                         print("info: {}" .format(info))
                         print("i: {}".format(i))
                         if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
@@ -104,7 +106,7 @@ def main():
                             com1.rx.clearBuffer()
                             resposta(com1, rxBufferHeader, ERRO, i)
                     except TimeoutError:
-                        print("Deu ruim fdp")
+                        print("Tempo excedido! Tentar novamente.")
                         resposta(com1, rxBufferHeader, ERRO, i)
                 with open("img/icon.png", "wb") as img:
                     img.write(content)
