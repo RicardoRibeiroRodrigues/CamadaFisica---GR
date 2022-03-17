@@ -66,9 +66,9 @@ def handshake(com1):
         b"\x01",
         b"\x00\x00\x00",
     )
-    print(header)
     while True:
         try:
+            print("Mandou o HandShake, esperando resposta!")
             com1.sendData(np.asarray(header))
             time.sleep(0.01)
             com1.sendData(np.asarray(b"\x00"))
@@ -98,11 +98,13 @@ def handshake(com1):
 
 def envia_mensagem(lista_payloads, com1):
     i = 0
-    print(lista_payloads)
+    # print(lista_payloads)
     n_pacotes = len(lista_payloads).to_bytes(1, "big")
     while i < len(lista_payloads):
         # Define parametros de header
         n_pacote = i.to_bytes(1, byteorder="big")
+        # Condicao 3.
+        # n_pacote = (10).to_bytes(1, byteorder="big")
         payload = lista_payloads[i]
         # content += payload
         tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
@@ -119,7 +121,7 @@ def envia_mensagem(lista_payloads, com1):
             n_pacotes,
             b"\x00\x00\x00",
         )
-        print(f"{i = }")
+        print(f"Numero do pacote: {i}")
         # Manda o pacote para o servidor
         pacote = header + payload + EOP
         com1.sendData(np.asarray(pacote))
@@ -136,6 +138,8 @@ def envia_mensagem(lista_payloads, com1):
             print("O servidor recebeu o payload corretamente, mandando o prox")
             i += 1
         else:
+            if i != header_server[2]:
+                print("O numero do pacote estava incoerente com o do server")
             i = header_server[2]
             com1.rx.clearBuffer()
             print("Algo deu errado, tentando novamente")
