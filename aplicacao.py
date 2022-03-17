@@ -40,7 +40,7 @@ IPV4 = b"\x01"
 IPV6 = b"\x02"
 PC_RICARDO = b"\x01"
 PC_FONTANA = b"\x02"
-EOP = b"\xFF\xFF\xFF\xFF"
+EOP = b"\xAA\xBB\xCC\xDD"
 
 
 def fragmenta(mensagem):
