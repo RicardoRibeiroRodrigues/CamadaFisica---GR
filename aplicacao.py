@@ -34,9 +34,16 @@ DADOS = b"\x02"
 COMANDOS = b"\x03"
 CONFIRMACAO = b"\x04"
 ERRO = b"\x05"
+TIPO_1 = b"\x01"
+TIPO_2 = b"\x02"
+TIPO_3 = b"\x03"
+TIPO_4 = b"\x04"
+TIPO_5 = b"\x05"
+TIPO_6 = b"\x06"
+
 
 # Outras infos do header
-IPV4 = b"\x01"
+IPV5 = b"\x01"
 IPV6 = b"\x02"
 PC_RICARDO = b"\x01"
 PC_FONTANA = b"\x02"
