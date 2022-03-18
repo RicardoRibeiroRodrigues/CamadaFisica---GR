@@ -18,7 +18,18 @@ PC_FONTANA = b"\x02"
 EOP = b"\xAA\xBB\xCC\xDD"
 
 
-def monta_header(h0, h1, h2, h3, h4, h5, h6, h7, h8, h9):
+def monta_header(
+    h0: bytes,
+    h1: bytes,
+    h2: bytes,
+    h3: bytes,
+    h4: bytes,
+    h5: bytes,
+    h6: bytes,
+    h7: bytes,
+    h8: bytes,
+    h9: bytes,
+):
     """
     Parametros:
         h0(byte): Tipo do pacote (dados, comando etc.).

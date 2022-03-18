@@ -10,12 +10,11 @@
 # para acompanhar a execução e identificar erros, construa prints ao longo do código!
 
 
-from sys import byteorder
 from enlace import *
 import time
 import numpy as np
 from datagrama import monta_header
-from utils import bytes_to_list, para_inteiro
+from utils import bytes_to_list, para_inteiro, escreve_log
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -28,25 +27,19 @@ from utils import bytes_to_list, para_inteiro
 serialName = "COM4"  # Windows(variacao de)
 
 # Tipos de pacote
-HANDSHAKE = b"\x00"
-RESPOSTA_HANDSHAKE = b"\x01"
-DADOS = b"\x02"
-COMANDOS = b"\x03"
-CONFIRMACAO = b"\x04"
-ERRO = b"\x05"
+# Chamado do cliente para o servidor (HandShake)
 TIPO_1 = b"\x01"
+# Resposta do servidor para o cliente ao HandShake
 TIPO_2 = b"\x02"
+# Mensagem do tipo de dados.
 TIPO_3 = b"\x03"
+# Mensagem recebida pelo servidor
 TIPO_4 = b"\x04"
+# Mensagem de time out -> Dois lados
 TIPO_5 = b"\x05"
+# Mensagem de erro -> Servidor envia
 TIPO_6 = b"\x06"
 
-
-# Outras infos do header
-IPV5 = b"\x01"
-IPV6 = b"\x02"
-PC_RICARDO = b"\x01"
-PC_FONTANA = b"\x02"
 EOP = b"\xAA\xBB\xCC\xDD"
 
 
@@ -62,26 +55,27 @@ def fragmenta(mensagem):
     return lista_payloads
 
 
-def handshake(com1):
+def handshake(com1, tamanho_msg: int):
     header = monta_header(
-        HANDSHAKE,
-        IPV6,
+        TIPO_1,
+        b"\x00",
+        b"\x00",
+        tamanho_msg.to_bytes(1, "big"),
         b"\x01",
-        b"\x01",
-        PC_FONTANA,
-        PC_RICARDO,
-        b"\x01",
-        b"\x00\x00\x00",
+        b"\x00",
+        b"\x00",
+        b"\x00",
+        b"\x00",
+        b"\x00",
     )
     while True:
         try:
             print("Mandou o HandShake, esperando resposta!")
-            com1.sendData(np.asarray(header))
+            pacote = header + b"\x00" + EOP
+            com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
-            com1.sendData(np.asarray(b"\x00"))
-            time.sleep(0.01)
-            com1.sendData(np.asarray(EOP))
-            time.sleep(0.01)
+            # Faz o log do envio
+            escreve_log("Client1.txt", "envio", 1, 1, 0, tamanho_msg)
             # Recebe a resposta do servidor
             rxBuffer, _ = com1.getData(10)
             print("Recebeu o HEAD do server")
@@ -95,6 +89,8 @@ def handshake(com1):
             print(bytes_to_list(rxBuffer))
             if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
                 print("Handshake deu certo!")
+                # Log de recebimento
+                escreve_log("Client1.txt", "recebe", 2, payload, 0, tamanho_msg)
                 return True
             print("Algo deu errado, refazendo o handshake")
         except TimeoutError:
@@ -104,7 +100,7 @@ def handshake(com1):
 
 
 def envia_mensagem(lista_payloads, com1):
-    i = 0
+    i = 1
     # print(lista_payloads)
     n_pacotes = len(lista_payloads).to_bytes(1, "big")
     while i < len(lista_payloads):
@@ -119,12 +115,12 @@ def envia_mensagem(lista_payloads, com1):
         # tamanho_pacote = (10).to_bytes(1, byteorder="big")
         # Monta o header com os parametros
         header = monta_header(
-            DADOS,
-            IPV6,
+            TIPO_3,
+            b"\x00",
+            b"\x00",
+            n_pacotes,
             n_pacote,
             tamanho_pacote,
-            PC_FONTANA,
-            PC_RICARDO,
             n_pacotes,
             b"\x00\x00\x00",
         )
@@ -139,7 +135,7 @@ def envia_mensagem(lista_payloads, com1):
         print("Recebe o HEAD")
         _, _ = com1.getData(header_server[3])
         final_server, _ = com1.getData(4)
-        confirma = header_server[0] == para_inteiro(CONFIRMACAO)
+        confirma = header_server[0] == para_inteiro(TIPO_4)
         final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
         if confirma and final_pacote:
             print("O servidor recebeu o payload corretamente, mandando o prox")
@@ -161,11 +157,13 @@ def main():
         # Ativa comunicacao. Inicia os threads e a comunicação serial
         com1.enable()
 
-        res = handshake(com1)
+        with open("img/icon.png", "rb") as file:
+            mensagem = fragmenta(file.read())
+
+        res = handshake(com1, len(mensagem))
 
         if res:
-            with open("img/icon.png", "rb") as file:
-                envia_mensagem(fragmenta(file.read()), com1)
+            envia_mensagem(mensagem, com1)
 
         # Encerra comunicação
         print("-------------------------")
