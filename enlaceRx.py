@@ -68,12 +68,14 @@ class RX(object):
         self.threadResume()
         return b
 
-    def getNData(self, size):
-        comeco = time.time()
+    def getNData(self, size, timer1, timer2):
         while self.getBufferLen() < size:
             time.sleep(0.05)
-            if time.time() - comeco > 5:
-                raise TimeoutError("O servidor demorou muito para enviar a resposta!")
+            now = time.time()
+            if now - timer2 > 20:
+                return "timeout"
+            elif now - timer1 > 5:
+                return "reenvia"
         return self.getBuffer(size)
 
     def clearBuffer(self):
