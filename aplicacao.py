@@ -76,27 +76,69 @@ def handshake(com1, tamanho_msg: int):
             time.sleep(0.01)
             # Faz o log do envio
             escreve_log("Client1.txt", "envio", 1, 1, 0, tamanho_msg)
+
             # Recebe a resposta do servidor
-            rxBuffer, _ = com1.getData(10)
+            timer1 = time.time()
+            timer2 = time.time()
+            rxBuffer, _ = com1.getData(10, timer1, timer2)
             print("Recebeu o HEAD do server")
+
+            # Envia novamente enquanto o servidor nao responde
+            while rxBuffer == "reenvia":
+                com1.sendData(np.asarray(pacote))
+                escreve_log("Client1.txt", "reenvio", 1, 1, 0, tamanho_msg)
+                time.sleep(0.01)
+                timer1 = time.time()
+                rxBuffer, _ = com1.getData(10, timer1, timer2)
+
             payload = rxBuffer[3]
-            resposta = rxBuffer[0]
-            if resposta == 1:
-                print("O servidor respondeu")
+            resposta_server = rxBuffer[0]
+
+            if rxBuffer == "timeout":
+                resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
+                if resposta == "N":
+                    return False
+
+            if resposta_server == 1:
+                print("O servidor respondeu!")
+
             # Pega a msg de resposta do servidor (payload)
-            rxBuffer, _ = com1.getData(payload)
-            rxBuffer, _ = com1.getData(4)
-            print(bytes_to_list(rxBuffer))
+            rxBuffer, _ = com1.getData(payload, timer1, timer2)
+            rxBuffer, _ = com1.getData(4, timer1, timer2)
+
             if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
                 print("Handshake deu certo!")
                 # Log de recebimento
                 escreve_log("Client1.txt", "recebe", 2, payload, 0, tamanho_msg)
                 return True
+
             print("Algo deu errado, refazendo o handshake")
         except TimeoutError:
             resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
             if resposta == "N":
                 return False
+
+
+# Usar no de dados
+"""if rxBuffer == "timeout":
+    header = monta_header(
+        TIPO_5,
+        b"\x00",
+        b"\x00",
+        tamanho_msg.to_bytes(1, "big"),
+        b"\x01",
+        b"\x00",
+        b"\x00",
+        b"\x00",
+        b"\x00",
+        b"\x00",
+    )
+    pacote = header + b"\x00" + EOP
+    com1.sendData(np.asarray(pacote))
+    time.sleep(0.01)
+    com1.disable()
+    return False
+"""
 
 
 def envia_mensagem(lista_payloads, com1):
@@ -109,7 +151,7 @@ def envia_mensagem(lista_payloads, com1):
         # Condicao 3.
         # n_pacote = (10).to_bytes(1, byteorder="big")
         payload = lista_payloads[i]
-        # content += payload
+
         tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
         # Tamanho bugado
         # tamanho_pacote = (10).to_bytes(1, byteorder="big")
@@ -122,19 +164,39 @@ def envia_mensagem(lista_payloads, com1):
             n_pacote,
             tamanho_pacote,
             n_pacotes,
-            b"\x00\x00\x00",
+            b"\x00",
+            b"\x00",
+            b"\x00",
         )
         print(f"Numero do pacote: {i}")
+
         # Manda o pacote para o servidor
         pacote = header + payload + EOP
         com1.sendData(np.asarray(pacote))
         time.sleep(0.01)
+        timer1 = time.time()
+        timer2 = time.time()
         print("Enviou a mensagem")
+        escreve_log("Client1.txt", "envio", 3, n_pacote, tamanho_pacote, n_pacotes)
+
         # Confirma que o servidor recebeu corretamente
-        header_server, _ = com1.getData(10)
+        header_server, _ = com1.getData(10, timer1, timer2)
         print("Recebe o HEAD")
+
+        # Envia novamente enquanto o servidor nao responde
+        while header_server == "reenvia":
+            com1.sendData(np.asarray(pacote))
+            escreve_log(
+                "Client1.txt", "reenvio", 3, n_pacote, tamanho_pacote, n_pacotes
+            )
+            time.sleep(0.01)
+            timer1 = time.time()
+            header_server, _ = com1.getData(10, timer1, timer2)
+
         _, _ = com1.getData(header_server[3])
         final_server, _ = com1.getData(4)
+
+        # Condicoes para a mensagem estar correta
         confirma = header_server[0] == para_inteiro(TIPO_4)
         final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
         if confirma and final_pacote:
