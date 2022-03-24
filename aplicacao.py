@@ -14,6 +14,7 @@ from enlace import *
 import time
 import numpy as np
 from datagrama import monta_header
+from erros import timer1Error
 from utils import bytes_to_list, para_inteiro, escreve_log
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
@@ -56,6 +57,7 @@ def fragmenta(mensagem):
 
 
 def handshake(com1, tamanho_msg: int):
+    reenvio = False
     header = monta_header(
         TIPO_1,
         b"\x00",
@@ -75,139 +77,129 @@ def handshake(com1, tamanho_msg: int):
             com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
             # Faz o log do envio
-            escreve_log("Client1.txt", "envio", 1, 1, 0, tamanho_msg)
+            if not reenvio:
+                escreve_log("Client1.txt", "envio", 1, 1, 0, tamanho_msg)
+            else:
+                reenvio = False
+                escreve_log("Client1.txt", "reenvio", 1, 1, 0, tamanho_msg)
 
             # Recebe a resposta do servidor
             timer1 = time.time()
-            timer2 = time.time()
+            if not reenvio:
+                timer2 = time.time()
             rxBuffer, _ = com1.getData(10, timer1, timer2)
             print("Recebeu o HEAD do server")
 
-            # Envia novamente enquanto o servidor nao responde
-            while rxBuffer == "reenvia":
-                com1.sendData(np.asarray(pacote))
-                escreve_log("Client1.txt", "reenvio", 1, 1, 0, tamanho_msg)
-                time.sleep(0.01)
-                timer1 = time.time()
-                rxBuffer, _ = com1.getData(10, timer1, timer2)
-
-            payload = rxBuffer[3]
+            id_arquivo = rxBuffer[5]
             resposta_server = rxBuffer[0]
-
-            if rxBuffer == "timeout":
-                resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
-                if resposta == "N":
-                    return False
 
             if resposta_server == 1:
                 print("O servidor respondeu!")
 
             # Pega a msg de resposta do servidor (payload)
-            rxBuffer, _ = com1.getData(payload, timer1, timer2)
+            rxBuffer, _ = com1.getData(id_arquivo, timer1, timer2)
             rxBuffer, _ = com1.getData(4, timer1, timer2)
 
             if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
                 print("Handshake deu certo!")
                 # Log de recebimento
-                escreve_log("Client1.txt", "recebe", 2, payload, 0, tamanho_msg)
+                escreve_log("Client1.txt", "recebe", 2, id_arquivo, 0, tamanho_msg)
                 return True
 
             print("Algo deu errado, refazendo o handshake")
+        except timer1Error:
+            reenvio = True
         except TimeoutError:
             resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
             if resposta == "N":
                 return False
 
 
-# Usar no de dados
-"""if rxBuffer == "timeout":
-    header = monta_header(
-        TIPO_5,
-        b"\x00",
-        b"\x00",
-        tamanho_msg.to_bytes(1, "big"),
-        b"\x01",
-        b"\x00",
-        b"\x00",
-        b"\x00",
-        b"\x00",
-        b"\x00",
-    )
-    pacote = header + b"\x00" + EOP
-    com1.sendData(np.asarray(pacote))
-    time.sleep(0.01)
-    com1.disable()
-    return False
-"""
-
-
 def envia_mensagem(lista_payloads, com1):
     i = 1
-    # print(lista_payloads)
+    reenvio = False
     n_pacotes = len(lista_payloads).to_bytes(1, "big")
     while i < len(lista_payloads):
-        # Define parametros de header
-        n_pacote = i.to_bytes(1, byteorder="big")
-        # Condicao 3.
-        # n_pacote = (10).to_bytes(1, byteorder="big")
-        payload = lista_payloads[i]
+        try:
+            # Define parametros de header
+            n_pacote = i.to_bytes(1, byteorder="big")
+            payload = lista_payloads[i]
 
-        tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
-        # Tamanho bugado
-        # tamanho_pacote = (10).to_bytes(1, byteorder="big")
-        # Monta o header com os parametros
-        header = monta_header(
-            TIPO_3,
-            b"\x00",
-            b"\x00",
-            n_pacotes,
-            n_pacote,
-            tamanho_pacote,
-            n_pacotes,
-            b"\x00",
-            b"\x00",
-            b"\x00",
-        )
-        print(f"Numero do pacote: {i}")
-
-        # Manda o pacote para o servidor
-        pacote = header + payload + EOP
-        com1.sendData(np.asarray(pacote))
-        time.sleep(0.01)
-        timer1 = time.time()
-        timer2 = time.time()
-        print("Enviou a mensagem")
-        escreve_log("Client1.txt", "envio", 3, n_pacote, tamanho_pacote, n_pacotes)
-
-        # Confirma que o servidor recebeu corretamente
-        header_server, _ = com1.getData(10, timer1, timer2)
-        print("Recebe o HEAD")
-
-        # Envia novamente enquanto o servidor nao responde
-        while header_server == "reenvia":
-            com1.sendData(np.asarray(pacote))
-            escreve_log(
-                "Client1.txt", "reenvio", 3, n_pacote, tamanho_pacote, n_pacotes
+            tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
+            # Monta o header com os parametros
+            header = monta_header(
+                TIPO_3,
+                b"\x00",
+                b"\x00",
+                n_pacotes,
+                n_pacote,
+                tamanho_pacote,
+                n_pacotes,
+                b"\x00",
+                b"\x00",
+                b"\x00",
             )
+            print(f"Numero do pacote: {i}")
+
+            # Manda o pacote para o servidor
+            pacote = header + payload + EOP
+            com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
             timer1 = time.time()
+            if not reenvio:
+                timer2 = time.time()
+            print("Enviou a mensagem")
+            if not reenvio:
+                escreve_log(
+                    "Client1.txt", "envio", 3, n_pacote, tamanho_pacote, n_pacotes
+                )
+            else:
+                reenvio = True
+                escreve_log(
+                    "Client1.txt", "reenvio", 3, n_pacote, tamanho_pacote, n_pacotes
+                )
+
+            # Confirma que o servidor recebeu corretamente
             header_server, _ = com1.getData(10, timer1, timer2)
+            print("Recebe o HEAD")
 
-        _, _ = com1.getData(header_server[3])
-        final_server, _ = com1.getData(4)
+            _, _ = com1.getData(header_server[5], timer1, timer2)
+            final_server, _ = com1.getData(4, timer1, timer2)
 
-        # Condicoes para a mensagem estar correta
-        confirma = header_server[0] == para_inteiro(TIPO_4)
-        final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
-        if confirma and final_pacote:
-            print("O servidor recebeu o payload corretamente, mandando o prox")
-            i += 1
-        else:
-            if i != header_server[2]:
-                print("O numero do pacote estava incoerente com o do server")
-            i = header_server[2]
-            com1.rx.clearBuffer()
-            print("Algo deu errado, tentando novamente")
+            # Condicoes para a mensagem estar correta
+            confirma = header_server[0] == para_inteiro(TIPO_4)
+            final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
+
+            if confirma and final_pacote:
+                print("O servidor recebeu o payload corretamente, mandando o prox")
+                i += 1
+            else:
+                if i != header_server[4]:
+                    print("O numero do pacote estava incoerente com o do server")
+                i = header_server[4]
+                com1.rx.clearBuffer()
+                print("Algo deu errado, tentando novamente")
+        except timer1Error:
+            reenvio = True
+        except TimeoutError:
+            print("O servidor demorou demais para responder")
+            header = monta_header(
+                TIPO_5,
+                b"\x00",
+                b"\x00",
+                n_pacotes,
+                n_pacote,
+                tamanho_pacote,
+                n_pacotes,
+                b"\x00",
+                b"\x00",
+                b"\x00",
+            )
+            pacote = header + b"\x00" + EOP
+            com1.sendData(np.asarray(pacote))
+            time.sleep(0.01)
+            com1.disable()
+            return
 
 
 def main():

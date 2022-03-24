@@ -12,6 +12,7 @@ import time
 
 # Threads
 import threading
+from erros import timer1Error
 
 # Class
 
@@ -73,9 +74,9 @@ class RX(object):
             time.sleep(0.05)
             now = time.time()
             if now - timer2 > 20:
-                return "timeout"
+                raise TimeoutError("O servidor demorou demais para responder")
             elif now - timer1 > 5:
-                return "reenvia"
+                return timer1Error()
         return self.getBuffer(size)
 
     def clearBuffer(self):
