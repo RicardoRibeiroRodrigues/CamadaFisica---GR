@@ -43,6 +43,8 @@ TIPO_6 = b"\x06"
 
 EOP = b"\xAA\xBB\xCC\xDD"
 
+ARQUIVO_LOG = "Client1.txt"
+
 
 def fragmenta(mensagem):
     lista_payloads = []
@@ -78,10 +80,10 @@ def handshake(com1, tamanho_msg: int):
             time.sleep(0.01)
             # Faz o log do envio
             if not reenvio:
-                escreve_log("Client1.txt", "envio", 1, 1, 0, tamanho_msg)
+                escreve_log(ARQUIVO_LOG, "envio", 1, 1, 0, tamanho_msg)
             else:
                 reenvio = False
-                escreve_log("Client1.txt", "reenvio", 1, 1, 0, tamanho_msg)
+                escreve_log(ARQUIVO_LOG, "reenvio", 1, 1, 0, tamanho_msg)
 
             # Recebe a resposta do servidor
             timer1 = time.time()
@@ -103,7 +105,7 @@ def handshake(com1, tamanho_msg: int):
             if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
                 print("Handshake deu certo!")
                 # Log de recebimento
-                escreve_log("Client1.txt", "recebe", 2, id_arquivo, 0, tamanho_msg)
+                escreve_log(ARQUIVO_LOG, "recebe", 2, id_arquivo, 0, tamanho_msg)
                 return True
 
             print("Algo deu errado, refazendo o handshake")
@@ -145,18 +147,19 @@ def envia_mensagem(lista_payloads, com1):
             pacote = header + payload + EOP
             com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
+
             timer1 = time.time()
             if not reenvio:
                 timer2 = time.time()
             print("Enviou a mensagem")
             if not reenvio:
                 escreve_log(
-                    "Client1.txt", "envio", 3, n_pacote, tamanho_pacote, n_pacotes
+                    ARQUIVO_LOG, "envio", 3, n_pacote, tamanho_pacote, n_pacotes
                 )
             else:
                 reenvio = True
                 escreve_log(
-                    "Client1.txt", "reenvio", 3, n_pacote, tamanho_pacote, n_pacotes
+                    ARQUIVO_LOG, "reenvio", 3, n_pacote, tamanho_pacote, n_pacotes
                 )
 
             # Confirma que o servidor recebeu corretamente
@@ -169,11 +172,18 @@ def envia_mensagem(lista_payloads, com1):
             # Condicoes para a mensagem estar correta
             confirma = header_server[0] == para_inteiro(TIPO_4)
             final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
+            mensagem_t6 = header_server[0] == para_inteiro(TIPO_6)
 
             if confirma and final_pacote:
+                escreve_log(
+                    ARQUIVO_LOG, "recebimento", 4, header_server[5], n_pacote, n_pacotes
+                )
                 print("O servidor recebeu o payload corretamente, mandando o prox")
                 i += 1
-            else:
+            elif mensagem_t6:
+                escreve_log(
+                    ARQUIVO_LOG, "recebimento", 6, header_server[5], n_pacote, n_pacotes
+                )
                 if i != header_server[4]:
                     print("O numero do pacote estava incoerente com o do server")
                 i = header_server[4]
