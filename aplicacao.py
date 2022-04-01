@@ -79,16 +79,15 @@ def handshake(com1, tamanho_msg: int):
             com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
             # Faz o log do envio
+            timer1 = time.time()
             if not reenvio:
                 escreve_log(ARQUIVO_LOG, "envio", 1, 1, 0, tamanho_msg)
+                timer2 = time.time()
             else:
                 reenvio = False
                 escreve_log(ARQUIVO_LOG, "reenvio", 1, 1, 0, tamanho_msg)
 
             # Recebe a resposta do servidor
-            timer1 = time.time()
-            if not reenvio:
-                timer2 = time.time()
             rxBuffer, _ = com1.getData(10, timer1, timer2)
             print("Recebeu o HEAD do server")
 

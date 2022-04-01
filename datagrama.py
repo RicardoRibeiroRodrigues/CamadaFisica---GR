@@ -1,20 +1,20 @@
 import numpy as np
 import time
 
-
 # Tipos de pacote
-HANDSHAKE = b"\x00"
-RESPOSTA_HANDSHAKE = b"\x01"
-DADOS = b"\x02"
-COMANDOS = b"\x03"
-CONFIRMACAO = b"\x04"
-ERRO = b"\x05"
-
-# Outras infos do header
-IPV4 = b"\x01"
-IPV6 = b"\x02"
-PC_RICARDO = b"\x01"
-PC_FONTANA = b"\x02"
+# Chamado do cliente para o servidor (HandShake)
+TIPO_1 = b"\x01"
+# Resposta do servidor para o cliente ao HandShake
+TIPO_2 = b"\x02"
+# Mensagem do tipo de dados.
+TIPO_3 = b"\x03"
+# Mensagem recebida pelo servidor
+TIPO_4 = b"\x04"
+# Mensagem de time out -> Dois lados
+TIPO_5 = b"\x05"
+# Mensagem de erro -> Servidor envia
+TIPO_6 = b"\x06"
+# Fim do pacote
 EOP = b"\xAA\xBB\xCC\xDD"
 
 
