@@ -25,7 +25,7 @@ from erros import Timer1Error, Timer2Error
 # use uma das 3 opcoes para atribuir à variável a porta usada
 # serialName = "/dev/ttyACM0"  # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM3"  # Windows(variacao de)
+serialName = "COM4"  # Windows(variacao de)
 
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
@@ -82,7 +82,7 @@ def main():
         # Ativa comunicacao. Inicia os threads e a comunicação seiral
         com1.enable()
         content = b""
-        i = 1
+        i = 2
         reenvio = False
 
         while True:
@@ -112,20 +112,24 @@ def main():
                 final, _ = com1.getData(4, timer1, timer2)
                 # Condicao para finalizacao do loop
                 if i == size:
+                    print(len(content))
                     with open("img/icon.png", "wb") as img:
                         img.write(content)
                     print("Receba!!!! Graças a deus, SIUUUUU!!!")
                     break
                 if rxBufferHeader[0] == para_inteiro(TIPO_1):
-                    resposta(com1, TIPO_2)
+                    resposta(com1, TIPO_2, i)
                     ocioso = True
                 elif rxBufferHeader[0] == para_inteiro(TIPO_3):
                     pacote_certo = rxBufferHeader[4] == i
+                    print("bufferHeader:", rxBufferHeader[4])
+                    print("i", i)
                     if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
+                        reenvio = False
                         content += info
                         i += 1
                         resposta(com1, TIPO_4, i)
-                        print("uma resposta recebida")
+                        print("uma resposta recebida corretamente.")
                     else:
                         if not pacote_certo:
                             print("Numero do pacote errado, reenviando.")
