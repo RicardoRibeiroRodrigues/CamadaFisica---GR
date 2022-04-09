@@ -25,7 +25,7 @@ from utils import bytes_to_list, para_inteiro, escreve_log
 # use uma das 3 opcoes para atribuir à variável a porta usada
 # serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM4"  # Windows(variacao de)
+serialName = "COM1"  # Windows(variacao de)
 
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
@@ -65,7 +65,7 @@ def handshake(com1, tamanho_msg: int):
         b"\x00",
         b"\x00",
         tamanho_msg.to_bytes(1, "big"),
-        b"\x01",
+        b"\x00",
         b"\x00",
         b"\x00",
         b"\x00",
@@ -75,7 +75,7 @@ def handshake(com1, tamanho_msg: int):
     while True:
         try:
             print("Mandou o HandShake, esperando resposta!")
-            pacote = header + b"\x00" + EOP
+            pacote = header + EOP
             com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
             # Faz o log do envio
@@ -98,7 +98,7 @@ def handshake(com1, tamanho_msg: int):
                 print("O servidor respondeu!")
 
             # Pega a msg de resposta do servidor (payload)
-            rxBuffer, _ = com1.getData(id_arquivo, timer1, timer2)
+            # rxBuffer, _ = com1.getData(0, timer1, timer2)
             rxBuffer, _ = com1.getData(4, timer1, timer2)
 
             if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
@@ -120,6 +120,7 @@ def envia_mensagem(lista_payloads, com1):
     i = 1
     reenvio = False
     n_pacotes = len(lista_payloads).to_bytes(1, "big")
+
     while i < len(lista_payloads):
         try:
             # Define parametros de header

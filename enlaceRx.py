@@ -76,7 +76,7 @@ class RX(object):
             if now - timer2 > 20:
                 raise TimeoutError("O servidor demorou demais para responder")
             elif now - timer1 > 5:
-                return timer1Error()
+                raise timer1Error()
         return self.getBuffer(size)
 
     def clearBuffer(self):
