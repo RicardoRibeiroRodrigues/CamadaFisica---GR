@@ -25,7 +25,7 @@ from utils import bytes_to_list, para_inteiro, escreve_log
 # use uma das 3 opcoes para atribuir à variável a porta usada
 # serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM1"  # Windows(variacao de)
+serialName = "COM6"  # Windows(variacao de)
 
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
@@ -42,6 +42,7 @@ TIPO_5 = b"\x05"
 TIPO_6 = b"\x06"
 
 EOP = b"\xAA\xBB\xCC\xDD"
+
 
 ARQUIVO_LOG = "Client1.txt"
 
@@ -65,7 +66,7 @@ def handshake(com1, tamanho_msg: int):
         b"\x00",
         b"\x00",
         tamanho_msg.to_bytes(1, "big"),
-        b"\x00",
+        b"\x01",
         b"\x00",
         b"\x00",
         b"\x00",
@@ -109,6 +110,7 @@ def handshake(com1, tamanho_msg: int):
 
             print("Algo deu errado, refazendo o handshake")
         except timer1Error:
+            print("tempo excedeu o timer1")
             reenvio = True
         except TimeoutError:
             resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
@@ -151,13 +153,13 @@ def envia_mensagem(lista_payloads, com1):
             timer1 = time.time()
             if not reenvio:
                 timer2 = time.time()
-            print("Enviou a mensagem")
+
             if not reenvio:
                 escreve_log(
                     ARQUIVO_LOG, "envio", 3, n_pacote, tamanho_pacote, n_pacotes
                 )
             else:
-                reenvio = True
+                reenvio = False
                 escreve_log(
                     ARQUIVO_LOG, "reenvio", 3, n_pacote, tamanho_pacote, n_pacotes
                 )
@@ -166,7 +168,7 @@ def envia_mensagem(lista_payloads, com1):
             header_server, _ = com1.getData(10, timer1, timer2)
             print("Recebe o HEAD")
 
-            _, _ = com1.getData(header_server[5], timer1, timer2)
+            # _, _ = com1.getData(header_server[5], timer1, timer2)
             final_server, _ = com1.getData(4, timer1, timer2)
 
             # Condicoes para a mensagem estar correta
@@ -175,12 +177,14 @@ def envia_mensagem(lista_payloads, com1):
             mensagem_t6 = header_server[0] == para_inteiro(TIPO_6)
 
             if confirma and final_pacote:
+                print("Entrou no lugar certo")
                 escreve_log(
                     ARQUIVO_LOG, "recebimento", 4, header_server[5], n_pacote, n_pacotes
                 )
                 print("O servidor recebeu o payload corretamente, mandando o prox")
                 i += 1
             elif mensagem_t6:
+                print("Estou errado")
                 escreve_log(
                     ARQUIVO_LOG, "recebimento", 6, header_server[5], n_pacote, n_pacotes
                 )
@@ -209,7 +213,7 @@ def envia_mensagem(lista_payloads, com1):
             com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
             com1.disable()
-            return
+            return False
 
 
 def main():
@@ -222,10 +226,12 @@ def main():
         com1.enable()
 
         with open("img/icon.png", "rb") as file:
-            mensagem = fragmenta(file.read())
+            msg = file.read()
+            print(f"Tamanho binario: {len(msg)}")
+            mensagem = fragmenta(msg)
+            print(f"Tamanho da mensagem = {len(mensagem)}")
 
         res = handshake(com1, len(mensagem))
-
         if res:
             envia_mensagem(mensagem, com1)
 
