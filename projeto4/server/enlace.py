@@ -19,7 +19,6 @@ from enlaceTx import TX
 
 
 class enlace(object):
-
     def __init__(self, name):
         self.fisica = fisica(name)
         self.rx = RX(self.fisica)
@@ -40,6 +39,6 @@ class enlace(object):
     def sendData(self, data):
         self.tx.sendBuffer(data)
 
-    def getData(self, size):
-        data = self.rx.getNData(size)
-        return(data, len(data))
+    def getData(self, size, timer1, timer2):
+        data = self.rx.getNData(size, timer1, timer2)
+        return (data, len(data))

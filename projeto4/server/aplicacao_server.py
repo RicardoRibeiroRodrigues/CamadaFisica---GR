@@ -14,7 +14,8 @@ from enlace import *
 import time
 import numpy as np
 from datagrama import monta_header
-from utils import bytes_to_list, para_inteiro
+from utils import bytes_to_list, para_inteiro, escreve_log
+from erros import Timer1Error, Timer2Error
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -22,9 +23,9 @@ from utils import bytes_to_list, para_inteiro
 # se estiver usando windows, o gerenciador de dispositivos informa a porta
 
 # use uma das 3 opcoes para atribuir à variável a porta usada
-serialName = "/dev/ttyACM0"  # Ubuntu (variacao de)
+# serialName = "/dev/ttyACM0"  # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-# serialName = "COM6"  # Windows(variacao de)
+serialName = "COM3"  # Windows(variacao de)
 
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
@@ -49,11 +50,10 @@ ERRO = b"\x05"
 IPV4 = b"\x01"
 IPV6 = b"\x02"
 ID_SERVER = 0
+ARQUIVO_LOG = "server1.txt"
 
 
-def resposta(com1, head, resposta, n_pacote=1):
-
-    n_pacote = n_pacote.to_bytes(1, byteorder="big")
+def resposta(com1, resposta, n_pacote=1) -> None:
     header = monta_header(
         resposta,
         b"\x00",
@@ -66,9 +66,10 @@ def resposta(com1, head, resposta, n_pacote=1):
         b"\x00",
         b"\x00",
     )
-    pacote = header + b"\x00" + EOP
+    pacote = header + EOP
     com1.sendData(np.asarray(pacote))
     time.sleep(0.01)
+    escreve_log(ARQUIVO_LOG, "envio", para_inteiro(resposta), 1)
 
 
 def main():
@@ -81,61 +82,67 @@ def main():
         # Ativa comunicacao. Inicia os threads e a comunicação seiral
         com1.enable()
         content = b""
+        i = 1
+        reenvio = False
 
         while True:
-            ocioso = True
-
-            rxBufferHeader, nRx = com1.getData(10)
-            i = 1
-            while ocioso:
-                # NOTE: Acho que esse loop é desnecessario e perigoso pro programa, cria risco de loop infinito
-                if rxBufferHeader[0] == para_inteiro(TIPO_1):
-                    ocioso = False
-                    message_size = 0
-                    client = rxBufferHeader[5]
-                elif rxBufferHeader[0] == para_inteiro(TIPO_3):
-                    message_size = rxBufferHeader[5]
-                    ocioso = False
-            # Podiamos fazer do nosso jeito, com os erros msm
-            # time.sleep(1)
-            size = rxBufferHeader[3]
-            info, _ = com1.getData(message_size)
-            final, _ = com1.getData(4)
-            # Condicao para finalizacao do loop
-            if i == size:
-                with open("img/icon.png", "wb") as img:
-                    img.write(content)
-                print("Receba!!!! Graças a deus, SIUUUUU!!!")
-                break
-            if rxBufferHeader[0] == para_inteiro(TIPO_1):
-                resposta(com1, rxBufferHeader, TIPO_2)
+            try:
                 ocioso = True
-            elif rxBufferHeader[0] == para_inteiro(TIPO_3):
-                pacote_certo = rxBufferHeader[4] == i
-                # NOTE: Acho que esse if quebra o programa um pouco, se entrar nesse, nao entra no else
-                # e consequentemente nao trata o problema de pacote incorreto.
-                if not pacote_certo:
-                    print(
-                        "O número do pacote está incorreto, reenviando número do pacote correto!"
-                    )
-                if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
-                    content += info
-                    i += 1
-                    # NOTE: Oq seria o head na funcao resposta, e pq nao esta sendo usado ? -> nesse caso causa erro
-                    resposta(com1, rxBufferHeader, TIPO_4)
-                    print("uma resposta recebida")
+                timer1 = time.time()
+                if not reenvio:
+                    timer2 = time.time()
+                rxBufferHeader, nRx = com1.getData(10, timer1, timer2)
+
+                while ocioso:
+                    print("entrou no ocioso!")
+                    if rxBufferHeader[0] == para_inteiro(TIPO_1):
+                        ocioso = False
+                        # Potencial de bug, mudar no cliente para o payload de fato ter tamanho 0.
+                        message_size = 0
+                        escreve_log(ARQUIVO_LOG, "recebimento", 1, 1)
+                        # Essa var parece nao ter uso.
+                        client = rxBufferHeader[5]
+                    elif rxBufferHeader[0] == para_inteiro(TIPO_3):
+                        message_size = rxBufferHeader[5]
+                        escreve_log(ARQUIVO_LOG, "recebimento", 3, 1)
+                        ocioso = False
+                # time.sleep(1)
+                size = rxBufferHeader[3]
+                info, _ = com1.getData(message_size, timer1, timer2)
+                final, _ = com1.getData(4, timer1, timer2)
+                # Condicao para finalizacao do loop
+                if i == size:
+                    with open("img/icon.png", "wb") as img:
+                        img.write(content)
+                    print("Receba!!!! Graças a deus, SIUUUUU!!!")
+                    break
+                if rxBufferHeader[0] == para_inteiro(TIPO_1):
+                    resposta(com1, TIPO_2)
                     ocioso = True
-                else:
-                    print("deu errado, to no else")
-                    if com1.rx.getBufferLen() > 0:
-                        print("Tamanho informado errado")
-                    com1.rx.clearBuffer()
-                    resposta(com1, rxBufferHeader, TIPO_6, i)
+                elif rxBufferHeader[0] == para_inteiro(TIPO_3):
+                    pacote_certo = rxBufferHeader[4] == i
+                    if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
+                        content += info
+                        i += 1
+                        resposta(com1, TIPO_4, i)
+                        print("uma resposta recebida")
+                    else:
+                        if not pacote_certo:
+                            print("Numero do pacote errado, reenviando.")
+                        if com1.rx.getBufferLen() > 0:
+                            print("Tamanho payload informado errado")
+                        com1.rx.clearBuffer()
+                        resposta(com1, TIPO_6, i)
                     ocioso = True
-    # TODO: Implementar os diferentes tipos de timeout para todos os timers propostos no fluxograma.
-    except TimeoutError:
-        print("Tempo excedido! Tentar novamente.")
-        resposta(com1, rxBufferHeader, TIPO_5, i)
+            except Timer1Error:
+                print("Excedeu o tempo do timer 1")
+                resposta(com1, TIPO_4, i)
+                reenvio = True
+            except Timer2Error:
+                print("Excedeu o tempo do timer 2, finalizando o programa")
+                ocioso = True
+                resposta(com1, TIPO_5, i)
+                break
 
         # Encerra comunicação
         print("-------------------------")

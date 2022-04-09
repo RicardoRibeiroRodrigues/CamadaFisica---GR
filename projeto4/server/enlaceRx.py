@@ -13,6 +13,8 @@ import time
 # Threads
 import threading
 
+from erros import Timer1Error, Timer2Error
+
 # Class
 
 
@@ -68,13 +70,16 @@ class RX(object):
         self.threadResume()
         return b
 
-    def getNData(self, size):
-        comeco = time.time()
+    def getNData(self, size, timer1, timer2):
         while self.getBufferLen() < size:
             time.sleep(0.05)
-            if time.time() - comeco > 5:
-                self.clearBuffer()
-                raise TimeoutError("Tempo excedido")
+            now = time.time()
+            if now - timer2 > 20:
+                # self.clearBuffer()
+                raise Timer2Error()
+            if now - timer1 > 2:
+                raise Timer1Error()
+                # self.clearBuffer()
         return self.getBuffer(size)
 
     def clearBuffer(self):
