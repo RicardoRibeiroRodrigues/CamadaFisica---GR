@@ -25,7 +25,7 @@ from erros import Timer1Error, Timer2Error
 # use uma das 3 opcoes para atribuir à variável a porta usada
 # serialName = "/dev/ttyACM0"  # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM4"  # Windows(variacao de)
+serialName = "COM6"  # Windows(variacao de)
 
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
@@ -43,12 +43,6 @@ TIPO_6 = b"\x06"
 
 EOP = b"\xAA\xBB\xCC\xDD"
 
-DADOS = 2
-COMANDOS = b"\x03"
-CONFIRMACAO = b"\x04"
-ERRO = b"\x05"
-IPV4 = b"\x01"
-IPV6 = b"\x02"
 ID_SERVER = 0
 ARQUIVO_LOG = "server1.txt"
 
@@ -73,7 +67,6 @@ def resposta(com1, resposta, n_pacote=1) -> None:
 
 
 def main():
-    # TODO: Implementar os logs para envio e recebimento.
     try:
         # declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
         # para declarar esse objeto é o nome da porta.
@@ -82,10 +75,11 @@ def main():
         # Ativa comunicacao. Inicia os threads e a comunicação seiral
         com1.enable()
         content = b""
-        i = 2
+        i = 1
         reenvio = False
+        size = 1e6
 
-        while True:
+        while i <= size:
             try:
                 ocioso = True
                 timer1 = time.time()
@@ -94,13 +88,10 @@ def main():
                 rxBufferHeader, nRx = com1.getData(10, timer1, timer2)
 
                 while ocioso:
-                    print("entrou no ocioso!")
                     if rxBufferHeader[0] == para_inteiro(TIPO_1):
                         ocioso = False
-                        # Potencial de bug, mudar no cliente para o payload de fato ter tamanho 0.
                         message_size = 0
                         escreve_log(ARQUIVO_LOG, "recebimento", 1, 1)
-                        # Essa var parece nao ter uso.
                         client = rxBufferHeader[5]
                     elif rxBufferHeader[0] == para_inteiro(TIPO_3):
                         message_size = rxBufferHeader[5]
@@ -111,19 +102,11 @@ def main():
                 info, _ = com1.getData(message_size, timer1, timer2)
                 final, _ = com1.getData(4, timer1, timer2)
                 # Condicao para finalizacao do loop
-                if i == size:
-                    print(len(content))
-                    with open("img/icon.png", "wb") as img:
-                        img.write(content)
-                    print("Receba!!!! Graças a deus, SIUUUUU!!!")
-                    break
                 if rxBufferHeader[0] == para_inteiro(TIPO_1):
                     resposta(com1, TIPO_2, i)
                     ocioso = True
                 elif rxBufferHeader[0] == para_inteiro(TIPO_3):
                     pacote_certo = rxBufferHeader[4] == i
-                    print("bufferHeader:", rxBufferHeader[4])
-                    print("i", i)
                     if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
                         reenvio = False
                         content += info
@@ -140,14 +123,18 @@ def main():
                     ocioso = True
             except Timer1Error:
                 print("Excedeu o tempo do timer 1")
-                resposta(com1, TIPO_4, i)
+                resposta(com1, TIPO_6, i)
                 reenvio = True
             except Timer2Error:
                 print("Excedeu o tempo do timer 2, finalizando o programa")
                 ocioso = True
                 resposta(com1, TIPO_5, i)
                 break
-
+        # O valor de i é incrementado na ultima iteração, subtrai 1 para comparar com o tamanho total.
+        if i - 1 == size:
+            with open("img/icon.png", "wb") as img:
+                img.write(content)
+            print("Receba!!!! Graças a deus, SIUUUUU!!!")
         # Encerra comunicação
         print("-------------------------")
         print("Comunicação encerrada")
