@@ -1,6 +1,3 @@
-import numpy as np
-import time
-
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
 TIPO_1 = b"\x01"
@@ -45,20 +42,3 @@ def monta_header(
         h9(byte): CRC.
     """
     return h0 + h1 + h2 + h3 + h4 + h5 + h6 + h7 + h8 + h9
-
-
-class Pacote:
-    def __init__(self, header, payload, com1) -> None:
-        self.tipo_msg = header[0]
-        self.total_pacotes = header[3]
-        self.n_pacote = header[4]
-        self.h5 = header[5]
-        self.pacote_recomeco = header[6]
-        self.sucesso_anterior = header[7]
-        self.h89 = header[8:10]
-        self.pacote = header + payload + EOP
-        self.com1 = com1
-
-    def envia(self):
-        self.com1.sendData(np.asarray(self.pacote))
-        time.sleep(0.01)
