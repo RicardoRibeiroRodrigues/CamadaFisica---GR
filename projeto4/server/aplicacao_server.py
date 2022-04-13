@@ -44,7 +44,7 @@ TIPO_6 = b"\x06"
 EOP = b"\xAA\xBB\xCC\xDD"
 
 ID_SERVER = 0
-ARQUIVO_LOG = "server1.txt"
+ARQUIVO_LOG = "server5.txt"
 
 
 def resposta(com1, resposta, n_pacote=1) -> None:
@@ -63,7 +63,7 @@ def resposta(com1, resposta, n_pacote=1) -> None:
     pacote = header + EOP
     com1.sendData(np.asarray(pacote))
     time.sleep(0.01)
-    escreve_log(ARQUIVO_LOG, "envio", para_inteiro(resposta), 1)
+    escreve_log(ARQUIVO_LOG, "envio", para_inteiro(resposta), 14)
 
 
 def main():
@@ -91,19 +91,32 @@ def main():
                     if rxBufferHeader[0] == para_inteiro(TIPO_1):
                         ocioso = False
                         message_size = 0
-                        escreve_log(ARQUIVO_LOG, "recebimento", 1, 1)
+                        escreve_log(ARQUIVO_LOG, "recebimento", 1, 14)
                         client = rxBufferHeader[5]
                     elif rxBufferHeader[0] == para_inteiro(TIPO_3):
                         message_size = rxBufferHeader[5]
-                        escreve_log(ARQUIVO_LOG, "recebimento", 3, 1)
+                        escreve_log(
+                            ARQUIVO_LOG,
+                            "recebimento",
+                            3,
+                            14 + message_size,
+                            rxBufferHeader[4],
+                            rxBufferHeader[3],
+                        )
+                        ocioso = False
+                    else:
+                        # Em caso de a mensagem nao ser de nenhum dos tipos, trata o erro.
+                        message_size = 0
                         ocioso = False
                 # time.sleep(1)
                 size = rxBufferHeader[3]
                 info, _ = com1.getData(message_size, timer1, timer2)
                 final, _ = com1.getData(4, timer1, timer2)
-                # Condicao para finalizacao do loop
                 if rxBufferHeader[0] == para_inteiro(TIPO_1):
+                    # ------------------------------------------
+                    # (3) -> comentar a linha abaixo.
                     resposta(com1, TIPO_2, i)
+                    # ------------------------------------------
                     ocioso = True
                 elif rxBufferHeader[0] == para_inteiro(TIPO_3):
                     pacote_certo = rxBufferHeader[4] == i
@@ -111,7 +124,10 @@ def main():
                         reenvio = False
                         content += info
                         i += 1
+                        # ------------------------------------------
+                        # (4) -> comentar a linha abaixo.
                         resposta(com1, TIPO_4, i)
+                        # ------------------------------------------
                         print("uma resposta recebida corretamente.")
                     else:
                         if not pacote_certo:
@@ -120,6 +136,11 @@ def main():
                             print("Tamanho payload informado errado")
                         com1.rx.clearBuffer()
                         resposta(com1, TIPO_6, i)
+                    ocioso = True
+                else:
+                    print("A mensagem nao é de nenhum dos tipos esperados")
+                    com1.rx.clearBuffer()
+                    resposta(com1, TIPO_6, i)
                     ocioso = True
             except Timer1Error:
                 print("Excedeu o tempo do timer 1")
