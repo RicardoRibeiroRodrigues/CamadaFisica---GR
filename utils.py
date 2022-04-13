@@ -24,7 +24,7 @@ def escreve_log(
         arquivo(str): Nome do arquivo (dentro da pasta logs) em que o log será escrito.
         io (str): String indirando que operação está sendo feita (Envio, recebimento ou reenvio)
         tipo (int): Número do tipo do pacote.
-        tamanho_bytes (int): Número do tamanho do payload da mensagem.
+        tamanho_bytes (int): Número do tamanho total da mensagem.
         pacote_enviado (int): Número do pacote (incremental durante a transmissão).
         total_pacotes (int): Número total de pacotes da transmissão atual.
     """

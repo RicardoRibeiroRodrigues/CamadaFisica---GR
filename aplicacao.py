@@ -44,7 +44,7 @@ TIPO_6 = b"\x06"
 EOP = b"\xAA\xBB\xCC\xDD"
 
 
-ARQUIVO_LOG = "Client1.txt"
+ARQUIVO_LOG = "Client5.txt"
 
 
 def fragmenta(mensagem):
@@ -82,30 +82,31 @@ def handshake(com1, tamanho_msg: int):
             # Faz o log do envio
             timer1 = time.time()
             if not reenvio:
-                escreve_log(ARQUIVO_LOG, "envio", 1, 1, 0, tamanho_msg)
+                escreve_log(ARQUIVO_LOG, "envio", 1, 14)
                 timer2 = time.time()
             else:
                 reenvio = False
-                escreve_log(ARQUIVO_LOG, "reenvio", 1, 1, 0, tamanho_msg)
+                escreve_log(ARQUIVO_LOG, "reenvio", 1, 14)
 
             # Recebe a resposta do servidor
-            rxBuffer, _ = com1.getData(10, timer1, timer2)
+            head_server, _ = com1.getData(10, timer1, timer2)
             print("Recebeu o HEAD do server")
 
-            id_arquivo = rxBuffer[5]
-            resposta_server = rxBuffer[0]
+            id_arquivo = head_server[5]
+            resposta_server = head_server[0]
 
-            if resposta_server == 1:
-                print("O servidor respondeu!")
+            if resposta_server == 3:
+                print("O servidor respondeu com tipo 3!")
 
             # Pega a msg de resposta do servidor (payload)
             # rxBuffer, _ = com1.getData(0, timer1, timer2)
             rxBuffer, _ = com1.getData(4, timer1, timer2)
+            final_correto = bytes_to_list(rxBuffer) == bytes_to_list(EOP)
 
-            if bytes_to_list(rxBuffer) == bytes_to_list(EOP):
+            if final_correto and resposta_server == para_inteiro(TIPO_2):
                 print("Handshake deu certo!")
                 # Log de recebimento
-                escreve_log(ARQUIVO_LOG, "recebimento", 2, id_arquivo, 0, tamanho_msg)
+                escreve_log(ARQUIVO_LOG, "recebimento", 2, 14)
                 return True
 
             print("Algo deu errado, refazendo o handshake")
@@ -126,8 +127,13 @@ def envia_mensagem(lista_payloads, com1):
     while i <= len(lista_payloads):
         try:
             # Define parametros de header
+            # ---------------------------------------------
+            # Para dar erro na ordem do pacote enviado (2)
+            # if i == 15:
+            #     i = 13
+            # ---------------------------------------------
+
             n_pacote = i.to_bytes(1, byteorder="big")
-            #
             payload = lista_payloads[i - 1]
 
             tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
@@ -157,12 +163,12 @@ def envia_mensagem(lista_payloads, com1):
 
             if not reenvio:
                 escreve_log(
-                    ARQUIVO_LOG, "envio", 3, i, len(payload), len(lista_payloads)
+                    ARQUIVO_LOG, "envio", 3, len(payload) + 14, i, len(lista_payloads)
                 )
             else:
                 reenvio = False
                 escreve_log(
-                    ARQUIVO_LOG, "reenvio", 3, i, len(payload), len(lista_payloads)
+                    ARQUIVO_LOG, "reenvio", 3, len(payload) + 14, i, len(lista_payloads)
                 )
 
             # Confirma que o servidor recebeu corretamente
@@ -182,18 +188,19 @@ def envia_mensagem(lista_payloads, com1):
                     ARQUIVO_LOG,
                     "recebimento",
                     4,
-                    header_server[5],
+                    14,
                     i,
                     len(lista_payloads),
                 )
                 print("O servidor recebeu o payload corretamente, mandando o prox")
                 i += 1
             elif mensagem_t6:
-                escreve_log(
-                    ARQUIVO_LOG, "recebimento", 6, header_server[5], n_pacote, n_pacotes
-                )
+                escreve_log(ARQUIVO_LOG, "recebimento", 6, 14, n_pacote, n_pacotes)
                 if i != header_server[4]:
                     print("O numero do pacote estava incoerente com o do server")
+                    print(
+                        f"O servidor mandou o pacote que quer receber: {header_server[4]}"
+                    )
                 i = header_server[4]
                 com1.rx.clearBuffer()
                 print("Algo deu errado, tentando novamente")
@@ -216,7 +223,7 @@ def envia_mensagem(lista_payloads, com1):
             pacote = header + EOP
             com1.sendData(np.asarray(pacote))
             time.sleep(0.01)
-            escreve_log(ARQUIVO_LOG, "Envio", 5, 0, i, n_pacotes)
+            escreve_log(ARQUIVO_LOG, "Envio", 5, 14)
             com1.disable()
             return False
 
