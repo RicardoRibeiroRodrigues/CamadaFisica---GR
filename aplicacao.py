@@ -116,6 +116,22 @@ def handshake(com1, tamanho_msg: int):
         except TimeoutError:
             resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
             if resposta == "N":
+                header = monta_header(
+                    TIPO_5,
+                    b"\x00",
+                    b"\x00",
+                    tamanho_msg.to_bytes(1, "big"),
+                    b"\x01",
+                    b"\x00",
+                    b"\x00",
+                    b"\x00",
+                    b"\x00",
+                    b"\x00",
+                )
+                pacote = header + EOP
+                com1.sendData(np.asarray(pacote))
+                time.sleep(0.01)
+                escreve_log(ARQUIVO_LOG, "Envio", 5, 14)
                 return False
 
 
@@ -195,7 +211,7 @@ def envia_mensagem(lista_payloads, com1):
                 print("O servidor recebeu o payload corretamente, mandando o prox")
                 i += 1
             elif mensagem_t6:
-                escreve_log(ARQUIVO_LOG, "recebimento", 6, 14, n_pacote, n_pacotes)
+                escreve_log(ARQUIVO_LOG, "recebimento", 6, 14, i, len(lista_payloads))
                 if i != header_server[4]:
                     print("O numero do pacote estava incoerente com o do server")
                     print(
