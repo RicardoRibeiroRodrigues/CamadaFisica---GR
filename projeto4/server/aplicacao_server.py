@@ -16,6 +16,8 @@ import numpy as np
 from datagrama import monta_header
 from utils import bytes_to_list, para_inteiro, escreve_log
 from erros import Timer1Error, Timer2Error
+from art import text2art
+from crc import CrcCalculator, Crc16
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -25,7 +27,7 @@ from erros import Timer1Error, Timer2Error
 # use uma das 3 opcoes para atribuir à variável a porta usada
 # serialName = "/dev/ttyACM0"  # Ubuntu (variacao de)
 # serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM6"  # Windows(variacao de)
+serialName = "COM3"  # Windows(variacao de)
 
 # Tipos de pacote
 # Chamado do cliente para o servidor (HandShake)
@@ -72,6 +74,7 @@ def main():
         # para declarar esse objeto é o nome da porta.
         com1 = enlace(serialName)
 
+        crc_calculator = CrcCalculator(Crc16.CCITT)
         # Ativa comunicacao. Inicia os threads e a comunicação seiral
         com1.enable()
         content = b""
@@ -120,7 +123,10 @@ def main():
                     ocioso = True
                 elif rxBufferHeader[0] == para_inteiro(TIPO_3):
                     pacote_certo = rxBufferHeader[4] == i
-                    if bytes_to_list(final) == bytes_to_list(EOP) and pacote_certo:
+                    checksum = crc_calculator.calculate_checksum(info)
+                    crc_check = checksum == int.from_bytes(rxBufferHeader[8:], "big")
+                    final_pacote_correto = bytes_to_list(final) == bytes_to_list(EOP)
+                    if final_pacote_correto and pacote_certo and crc_check:
                         reenvio = False
                         content += info
                         i += 1
@@ -155,11 +161,12 @@ def main():
         if i - 1 == size:
             with open("img/icon.png", "wb") as img:
                 img.write(content)
-            print("Receba!!!! Graças a deus, SIUUUUU!!!")
+            print("\033[1;32m" + text2art("Siuuuuuu") + "\033[0;0m")
+            # print("Receba!!!! Graças a deus, SIUUUUU!!!")
         # Encerra comunicação
-        print("-------------------------")
-        print("Comunicação encerrada")
-        print("-------------------------")
+        # print("-------------------------")
+        # print("Comunicação encerrada")
+        # print("-------------------------")
         com1.disable()
 
     except Exception as erro:
