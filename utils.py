@@ -1,4 +1,8 @@
 from datetime import datetime
+from enum import Enum
+
+
+ARQUIVO_LOG = "dump.txt"
 
 
 def para_inteiro(byte):
@@ -36,3 +40,32 @@ def escreve_log(
     with open(f"logs/{arquivo}", "a") as file:
         conteudo = f"{datetime.now()} /{io}/Tipo{tipo}/{tamanho_bytes}/{pacote_enviado}/{total_pacotes} \n"
         file.write(conteudo)
+
+
+class Colors(Enum):
+    RED_ERROR = "\033[1;31m"
+    RED_WARNING = "\033[5;31m"
+    RESET = "\033[0;0m"
+    GREEN_SUCESS = "\033[1;32m"
+    BLUE_START = "\033[5;34m"
+
+    def __str__(self) -> str:
+        return f"{self.value}"
+
+    @classmethod
+    def print_success(cls, msg) -> None:
+        print(f"{cls.GREEN_SUCESS}{msg}{cls.RESET}")
+
+    @classmethod
+    def print_error(cls, msg) -> None:
+        print(f"{cls.RED_ERROR}{msg}{cls.RESET}")
+
+    @classmethod
+    def print_start(cls, msg) -> None:
+        print(f"{cls.BLUE_START}{msg}{cls.RESET}")
+
+
+if __name__ == "__main__":
+    Colors.print_success("Sucesso!")
+    Colors.print_error("Erro 404")
+    Colors.print_start("Iniciando Handshake")

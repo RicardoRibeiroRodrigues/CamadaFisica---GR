@@ -13,9 +13,11 @@
 from enlace import *
 import time
 import numpy as np
-from datagrama import monta_header
+from datagrama import monta_header, Datagrama
 from erros import timer1Error
-from utils import bytes_to_list, para_inteiro, escreve_log
+from utils import bytes_to_list, para_inteiro, escreve_log, Colors, ARQUIVO_LOG
+from alive_progress import alive_bar
+from art import text2art
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -44,9 +46,6 @@ TIPO_6 = b"\x06"
 EOP = b"\xAA\xBB\xCC\xDD"
 
 
-ARQUIVO_LOG = "Client5.txt"
-
-
 def fragmenta(mensagem):
     lista_payloads = []
     tamanho_msg = len(mensagem)
@@ -61,24 +60,26 @@ def fragmenta(mensagem):
 
 def handshake(com1, tamanho_msg: int):
     reenvio = False
-    header = monta_header(
-        TIPO_1,
-        b"\x00",
-        b"\x00",
-        tamanho_msg.to_bytes(1, "big"),
-        b"\x01",
-        b"\x00",
-        b"\x00",
-        b"\x00",
-        b"\x00",
-        b"\x00",
-    )
+    # header = monta_header(
+    #     TIPO_1,
+    #     b"\x00",
+    #     b"\x00",
+    #     tamanho_msg.to_bytes(1, "big"),
+    #     b"\x01",
+    #     b"\x00",
+    #     b"\x00",
+    #     b"\x00",
+    #     b"\x00",
+    #     b"\x00",
+    # )
+    datagrama = Datagrama(1, tamanho_msg, 1, 0, 0, 0)
     while True:
         try:
-            print("Mandou o HandShake, esperando resposta!")
-            pacote = header + EOP
-            com1.sendData(np.asarray(pacote))
-            time.sleep(0.01)
+            Colors.print_start("Iniciando o HandShake!")
+            datagrama.send_msg(com1)
+            # pacote = header + EOP
+            # com1.sendData(np.asarray(pacote))
+            # time.sleep(0.01)
             # Faz o log do envio
             timer1 = time.time()
             if not reenvio:
@@ -90,13 +91,9 @@ def handshake(com1, tamanho_msg: int):
 
             # Recebe a resposta do servidor
             head_server, _ = com1.getData(10, timer1, timer2)
-            print("Recebeu o HEAD do server")
 
             id_arquivo = head_server[5]
             resposta_server = head_server[0]
-
-            if resposta_server == 3:
-                print("O servidor respondeu com tipo 3!")
 
             # Pega a msg de resposta do servidor (payload)
             # rxBuffer, _ = com1.getData(0, timer1, timer2)
@@ -104,33 +101,35 @@ def handshake(com1, tamanho_msg: int):
             final_correto = bytes_to_list(rxBuffer) == bytes_to_list(EOP)
 
             if final_correto and resposta_server == para_inteiro(TIPO_2):
-                print("Handshake deu certo!")
+                Colors.print_success("O HandShake deu certo!!")
                 # Log de recebimento
                 escreve_log(ARQUIVO_LOG, "recebimento", 2, 14)
                 return True
 
-            print("Algo deu errado, refazendo o handshake")
+            Colors.print_error("Algo deu errado, refazendo o handshake")
         except timer1Error:
-            print("tempo excedeu o timer1")
+            Colors.print_error("tempo excedeu o timer1")
             reenvio = True
         except TimeoutError:
             resposta = input("Servidor inativo. Tentar novamente?(S/N) ")
             if resposta == "N":
-                header = monta_header(
-                    TIPO_5,
-                    b"\x00",
-                    b"\x00",
-                    tamanho_msg.to_bytes(1, "big"),
-                    b"\x01",
-                    b"\x00",
-                    b"\x00",
-                    b"\x00",
-                    b"\x00",
-                    b"\x00",
-                )
-                pacote = header + EOP
-                com1.sendData(np.asarray(pacote))
-                time.sleep(0.01)
+                # header = monta_header(
+                #     TIPO_5,
+                #     b"\x00",
+                #     b"\x00",
+                #     tamanho_msg.to_bytes(1, "big"),
+                #     b"\x01",
+                #     b"\x00",
+                #     b"\x00",
+                #     b"\x00",
+                #     b"\x00",
+                #     b"\x00",
+                # )
+                # pacote = header + EOP
+                # com1.sendData(np.asarray(pacote))
+                # time.sleep(0.01)
+                datagrama = Datagrama(5, tamanho_msg, 1, 0, 0, 0)
+                datagrama.send_msg(com1)
                 escreve_log(ARQUIVO_LOG, "Envio", 5, 14)
                 return False
 
@@ -138,110 +137,132 @@ def handshake(com1, tamanho_msg: int):
 def envia_mensagem(lista_payloads, com1):
     i = 1
     reenvio = False
-    n_pacotes = len(lista_payloads).to_bytes(1, "big")
+    # n_pacotes = len(lista_payloads).to_bytes(1, "big")
+    texto = text2art("Iniciando a transmissao")
+    Colors.print_start(texto)
 
-    while i <= len(lista_payloads):
-        try:
-            # Define parametros de header
-            # ---------------------------------------------
-            # Para dar erro na ordem do pacote enviado (2)
-            # if i == 15:
-            #     i = 13
-            # ---------------------------------------------
+    with alive_bar(len(lista_payloads), title="Transmissão") as bar:
+        while i <= len(lista_payloads):
+            try:
+                # Define parametros de header
+                # ---------------------------------------------
+                # Para dar erro na ordem do pacote enviado (2)
+                # if i == 15:
+                # i = 13
+                # ---------------------------------------------
 
-            n_pacote = i.to_bytes(1, byteorder="big")
-            payload = lista_payloads[i - 1]
+                # n_pacote = i.to_bytes(1, byteorder="big")
+                payload = lista_payloads[i - 1]
 
-            tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
-            # Monta o header com os parametros
-            header = monta_header(
-                TIPO_3,
-                b"\x00",
-                b"\x00",
-                n_pacotes,
-                n_pacote,
-                tamanho_pacote,
-                n_pacotes,
-                b"\x00",
-                b"\x00",
-                b"\x00",
-            )
-            print(f"Numero do pacote: {i}")
+                # tamanho_pacote = (len(payload)).to_bytes(1, byteorder="big")
+                # Monta o header com os parametros
+                datagrama = Datagrama(3, len(lista_payloads), i, len(payload), 0, 0)
+                datagrama.send_msg(com1, payload=payload)
+                # header = monta_header(
+                #     TIPO_3,
+                #     b"\x00",
+                #     b"\x00",
+                #     n_pacotes,
+                #     n_pacote,
+                #     tamanho_pacote,
+                #     n_pacotes,
+                #     b"\x00",
+                #     b"\x00",
+                #     b"\x00",
+                # )
+                # Manda o pacote para o servidor
+                # pacote = header + payload + EOP
+                # com1.sendData(np.asarray(pacote))
+                # time.sleep(0.01)
 
-            # Manda o pacote para o servidor
-            pacote = header + payload + EOP
-            com1.sendData(np.asarray(pacote))
-            time.sleep(0.01)
-
-            timer1 = time.time()
-            if not reenvio:
-                timer2 = time.time()
-
-            if not reenvio:
-                escreve_log(
-                    ARQUIVO_LOG, "envio", 3, len(payload) + 14, i, len(lista_payloads)
-                )
-            else:
+                timer1 = time.time()
+                if not reenvio:
+                    timer2 = time.time()
                 reenvio = False
-                escreve_log(
-                    ARQUIVO_LOG, "reenvio", 3, len(payload) + 14, i, len(lista_payloads)
-                )
 
-            # Confirma que o servidor recebeu corretamente
-            header_server, _ = com1.getData(10, timer1, timer2)
-            print("Recebe o HEAD")
+                # if not reenvio:
+                #     escreve_log(
+                #         ARQUIVO_LOG,
+                #         "envio",
+                #         3,
+                #         len(payload) + 14,
+                #         i,
+                #         len(lista_payloads),
+                #     )
+                # else:
+                #     reenvio = False
+                #     escreve_log(
+                #         ARQUIVO_LOG,
+                #         "reenvio",
+                #         3,
+                #         len(payload) + 14,
+                #         i,
+                #         len(lista_payloads),
+                #     )
 
-            # _, _ = com1.getData(header_server[5], timer1, timer2)
-            final_server, _ = com1.getData(4, timer1, timer2)
+                # Confirma que o servidor recebeu corretamente
+                header_server, _ = com1.getData(10, timer1, timer2)
+                header_server = Datagrama.from_bytes(header_server)
 
-            # Condicoes para a mensagem estar correta
-            confirma = header_server[0] == para_inteiro(TIPO_4)
-            final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
-            mensagem_t6 = header_server[0] == para_inteiro(TIPO_6)
+                # _, _ = com1.getData(header_server[5], timer1, timer2)
+                final_server, _ = com1.getData(4, timer1, timer2)
 
-            if confirma and final_pacote:
-                escreve_log(
-                    ARQUIVO_LOG,
-                    "recebimento",
-                    4,
-                    14,
-                    i,
-                    len(lista_payloads),
-                )
-                print("O servidor recebeu o payload corretamente, mandando o prox")
-                i += 1
-            elif mensagem_t6:
-                escreve_log(ARQUIVO_LOG, "recebimento", 6, 14, i, len(lista_payloads))
-                if i != header_server[4]:
-                    print("O numero do pacote estava incoerente com o do server")
-                    print(
-                        f"O servidor mandou o pacote que quer receber: {header_server[4]}"
+                # Condicoes para a mensagem estar correta
+                # confirma = header_server.is_type4()
+                confirma = header_server.tipo == para_inteiro(TIPO_4)
+                final_pacote = bytes_to_list(final_server) == bytes_to_list(EOP)
+                mensagem_t6 = header_server.is_error()
+                # mensagem_t6 = header_server.tipo == para_inteiro(TIPO_6)
+
+                if confirma and final_pacote:
+                    escreve_log(
+                        ARQUIVO_LOG,
+                        "recebimento",
+                        4,
+                        14,
+                        i,
+                        len(lista_payloads),
                     )
-                i = header_server[4]
-                com1.rx.clearBuffer()
-                print("Algo deu errado, tentando novamente")
-        except timer1Error:
-            reenvio = True
-        except TimeoutError:
-            print("O servidor demorou demais para responder")
-            header = monta_header(
-                TIPO_5,
-                b"\x00",
-                b"\x00",
-                n_pacotes,
-                n_pacote,
-                b"\x00",
-                n_pacotes,
-                b"\x00",
-                b"\x00",
-                b"\x00",
-            )
-            pacote = header + EOP
-            com1.sendData(np.asarray(pacote))
-            time.sleep(0.01)
-            escreve_log(ARQUIVO_LOG, "Envio", 5, 14)
-            com1.disable()
-            return False
+                    bar()
+                    i += 1
+                elif mensagem_t6:
+                    escreve_log(
+                        ARQUIVO_LOG, "recebimento", 6, 14, i, len(lista_payloads)
+                    )
+                    # if not header_server.is_same_package(i)
+                    if i != header_server.n_pacote:
+                        Colors.print_error(
+                            "O numero do pacote estava incoerente com o do server"
+                        )
+                        print(
+                            f"O servidor mandou o pacote que quer receber: {header_server.n_pacote}"
+                        )
+                    i = header_server.n_pacote
+                    com1.rx.clearBuffer()
+                    Colors.print_error("Algo deu errado, tentando novamente")
+            except timer1Error:
+                reenvio = True
+            except TimeoutError:
+                Colors.print_error("O servidor demorou demais para responder")
+                # header = monta_header(
+                #     TIPO_5,
+                #     b"\x00",
+                #     b"\x00",
+                #     n_pacotes,
+                #     n_pacote,
+                #     b"\x00",
+                #     n_pacotes,
+                #     b"\x00",
+                #     b"\x00",
+                #     b"\x00",
+                # )
+                datagrama = Datagrama(5, len(lista_payloads), i, 0, i, 0)
+                datagrama.send_msg(com1)
+                escreve_log(ARQUIVO_LOG, "Envio", 5, 14)
+                com1.disable()
+                return False
+        texto = text2art("Deu certo!")
+        Colors.print_success(texto)
 
 
 def main():
@@ -277,8 +298,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # with open("img/icon.png", "rb") as img:
-    #     coisa = img.read()
-    #     print(len(coisa))
-    #     print(len(fragmenta(coisa)))
-    #     envia_mensagem(fragmenta(coisa), com1)
