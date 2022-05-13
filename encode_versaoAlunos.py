@@ -67,8 +67,12 @@ def main():
     tone = tone_1 + tone_2
     print("Executando as senoides (emitindo o som)")
     print("Gerando Tom referente ao símbolo : {}".format(NUM))
+    # Grafico do som original
     plt.plot(t, tone)
+    plt.xlim(0, 1e-2)
+
     sd.play(tone, fs)
+
     # aguarda fim do audio
     sd.wait()
     signal = tone

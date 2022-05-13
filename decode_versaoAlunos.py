@@ -54,6 +54,14 @@ def caractere_mais_prox(frequencias):
     return mais_prox
 
 
+def limpa_outliers(frequencias):
+    res = []
+    for freq in frequencias:
+        if 687 < freq < 1640:
+            res.append(freq)
+    return res
+
+
 def main():
 
     # declare um objeto da classe da sua biblioteca de apoio (cedida)
@@ -118,10 +126,10 @@ def main():
         print(f"Frequencia de pico: {freq}")
 
     # encontre na tabela duas frequencias proximas às frequencias de pico encontradas e descubra qual foi a tecla
+    freq_picos = limpa_outliers(freq_picos)
     tecla = caractere_mais_prox(freq_picos)
-    print(f"A tecla é a {tecla}")
-
     # print a tecla.
+    print(f"A tecla é a {tecla}")
 
     ## Exibe gráficos
     plt.show()
