@@ -55,6 +55,12 @@ plt.plot(xf, np.abs(yf))
 plt.title("Modulado - Fourier")
 plt.xlabel("Frequency [Hz]")
 plt.ylabel("Amplitude [V]")
+plt.xlim(8_500, 17_500)
+# Make a vertical line at 10500 hz
+plt.axvline(x=10_500, color="orange", label="Lower limit", linestyle="--")
+# Make a vertical line at 15500 hz
+plt.axvline(x=15_500, color="red", linestyle="dashed", label="Upper limit")
+plt.legend()
 
 # normalize the signal
 normalizado = modulado / np.max(np.abs(modulado))
