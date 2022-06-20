@@ -1,4 +1,4 @@
-# Projeto 3 - – Fragmentação, hand-shake e datagrama
+# Projeto 3 – Fragmentação, hand-shake e datagrama
 
 ## Objetivos:
 
