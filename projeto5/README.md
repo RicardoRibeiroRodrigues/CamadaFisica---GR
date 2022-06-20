@@ -23,3 +23,4 @@ Em seguida em outro terminal rode o arquivo "aplicacao_client.py":
 (Você pode trocar a imagem dentro da pasta img para a transmissão se for desejado)
 ```cmd
 python aplicacao_client.py
+```
