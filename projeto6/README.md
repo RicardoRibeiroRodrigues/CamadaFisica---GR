@@ -10,3 +10,10 @@ bits de acordo com frame UART com 1 bit de paridade, 1 start,
 esperando essa configuração de envio).
 
 ## Requisitos:
+- 2 arduinos.
+- Cabos jumper para conexões.
+- 1(2) computador(es) com arduino IDE instalado.
+
+## Montagem e execução do código:
+Para rodar, conecte o pino digital 4 de um arduino (receptor) ao pino digital 3 de outro (emissor), e conecte um GND no outro.        
+Em seguida, envie os códigos para os arduinos e modifique a mensagem no [TX](https://github.com/RicardoRibeiroRodrigues/CamadaFisicaGR/blob/main/projeto6/due_sw_uart_TX/due_sw_uart_TX.ino), se tudo estiver certo, você deverá ver a mensagem no monitor serial do arduino receptor.
